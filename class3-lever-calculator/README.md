@@ -187,6 +187,19 @@ point joins the frontier the instant it beats that running minimum. Total
 cost is O(n log n), dominated by the sort, versus O(n²) for naive pairwise
 dominance checking.
 
+**Effort force range tags**: define named force bands (e.g. "Light Duty
+100–250 lbf", "Heavy Duty 450–650 lbf") in the Tags card — they persist
+across sessions (their own IndexedDB store, independent of saved runs). Every
+feasible row is checked against each tag by holding that row's other
+parameters fixed and re-running the physics engine at the tag's low, mid, and
+high effort force — a tag applies only if all three points still pass every
+constraint. This deliberately ignores whatever Fe the row itself sampled, so
+it answers "would this hardware configuration hold up anywhere in this force
+band," not just "did this one draw happen to land in it" — and a
+configuration robust enough can and often will carry several tags at once.
+Tags show as a column in the results table (sortable, like everything else)
+and are included in CSV/.xlsx exports and saved runs.
+
 **Persistence & export**: "Save run" keeps the top 500 samples by score in
 this browser's IndexedDB (`shared/idb-store.js`), so it survives closing the
 tab — most reliable when used via a hosted URL (see the top-level README's

@@ -81,6 +81,20 @@
   }
 
   .export-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft);
+    color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: 100px; padding: 4px 10px; font-family: var(--font-mono); font-size: 11px; margin: 2px 4px 2px 0;
+  }
+  .tag-chip button {
+    background: none; border: none; color: inherit; cursor: pointer; font-size: 12px; line-height: 1; padding: 0;
+  }
+  .tag-cell-chip {
+    display: inline-block; background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--line);
+    border-radius: 100px; padding: 2px 8px; font-size: 10.5px; font-family: var(--font-mono); margin: 1px 2px;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -120,7 +134,23 @@
       </div>
 
       <div class="card">
-        <h2><span class="n">02</span> Constraints</h2>
+        <h2><span class="n">02</span> Effort Force Range Tags</h2>
+        <p class="note" style="margin-top:-6px;">Label the effort-force ranges your hardware needs to cover (e.g. "Light 100–250 lbf", "Heavy 450–700 lbf"). Every result gets checked against each tag's full range — independent of whatever effort force that row happened to sample — and shows every tag it holds up across, so one configuration can carry several tags.</p>
+        <div class="field-row" style="grid-template-columns: 1fr;">
+          <div class="range-cell" style="flex-wrap:wrap;">
+            <input type="text" id="tagName" placeholder="Tag name" style="width:120px; padding:7px 8px; border-radius:6px; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--ink); font-family:var(--font-sans); font-size:13px;">
+            <input type="number" id="tagMin" placeholder="min" style="width:76px;">
+            <span class="to">to</span>
+            <input type="number" id="tagMax" placeholder="max" style="width:76px;">
+            <span class="unit-tag" data-u="force"></span>
+            <button class="ghost-btn" id="addTagBtn" type="button" style="padding:7px 12px;">+ Add tag</button>
+          </div>
+        </div>
+        <div id="tagList" style="margin-top:10px;"><p class="note">No tags defined yet — results won't show tag suitability until you add at least one.</p></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">03</span> Constraints</h2>
         <div class="field-row">
           <label><span class="label-text">Max lever rotation</span><span class="hint">hard cap, ≤150° (the physics model's own limit)</span></label>
           <div class="input-unit"><input type="number" id="cMaxDTheta" value="150" min="1" max="150" /><span class="unit-tag">deg</span></div>
@@ -140,13 +170,13 @@
       </div>
 
       <div class="card">
-        <h2><span class="n">03</span> Objective Weights</h2>
+        <h2><span class="n">04</span> Objective Weights</h2>
         <p class="note" style="margin-top:-6px;">Every objective here is "smaller is better." Set a weight to 0 to ignore it. Each is min–max normalized across the feasible samples in this run before weighting, so a bench of 1000 lbf and one of 0.01 in don't distort each other.</p>
         <div id="weightRows"></div>
       </div>
 
       <div class="card">
-        <h2><span class="n">04</span> Sampling</h2>
+        <h2><span class="n">05</span> Sampling</h2>
         <div class="field-row">
           <label><span class="label-text">Samples</span><span class="hint">Monte Carlo draws (uniform within each range)</span></label>
           <div class="input-unit"><input type="number" id="nSamples" value="2000" min="10" max="50000" step="1" /></div>
@@ -174,6 +204,7 @@
           <div class="stat accent"><div class="label">Best score</div><div class="value">—</div></div>
           <div class="stat"><div class="label">Compute time</div><div class="value">—</div></div>
         </div>
+        <div id="tagCoverage" style="margin-bottom:8px;"></div>
         <p class="note" id="emptyNote">No run yet — configure parameters and click Run Sweep. Defaults reproduce a reasonable starting design.</p>
       </div>
 
@@ -239,6 +270,10 @@
       <div>
         <h3>Pareto front</h3>
         <p>For whichever two objectives you pick to plot, the non-dominated frontier is found with the classic 2D skyline algorithm: sort by X ascending (O(n log n)), then sweep once tracking the best Y seen — a point joins the frontier exactly when it beats that running minimum. Total cost O(n log n), dominated by the sort.</p>
+      </div>
+      <div>
+        <h3>Effort force range tags</h3>
+        <p>Tag suitability ignores the effort force a row happened to sample. Instead, each feasible row's <em>other</em> parameters (arm lengths, masses, spring, dead-center offsets) are re-run through the physics engine at three points spanning each tag's range (min, mid, max), holding everything else fixed. A tag applies to that row only if all three points still pass every constraint — so a tag reflects the hardware configuration's robustness across that whole force band, not a lucky single sample.</p>
       </div>
     </div>
     <p class="note" style="margin-top:14px;">Persistence uses the browser's IndexedDB — no server, no external database. CSV export is universal; the .xlsx export is a real OOXML workbook written by a small dependency-free zip/XML writer (<code>shared/spreadsheet-export.js</code>), not just a renamed CSV.</p>
@@ -325,6 +360,71 @@
     if (kind === "g") return "g";
     if (kind === "pct") return "%";
     return LP.UNITS[sys][kind];
+  }
+
+  // ---------- effort force range tags ----------
+  // Each tag: { id, name, minSI, maxSI } — persisted separately from runs so
+  // they survive across sweeps and stay available for tagging future ones.
+  const tagsIdb = new window.SharedIDB.Store("clement-math-lever-tags", "tags");
+  let tags = [];
+
+  async function loadTags() {
+    try { tags = await tagsIdb.getAll(); } catch (e) { tags = []; }
+    renderTagList();
+  }
+
+  function renderTagList() {
+    const el = document.getElementById("tagList");
+    if (!tags.length) { el.innerHTML = `<p class="note">No tags defined yet — results won't show tag suitability until you add at least one.</p>`; return; }
+    el.innerHTML = "";
+    tags.forEach(t => {
+      const chip = document.createElement("span");
+      chip.className = "tag-chip";
+      const lo = LP.fromSI("force", t.minSI, sys).toFixed(1);
+      const hi = LP.fromSI("force", t.maxSI, sys).toFixed(1);
+      chip.innerHTML = `${escapeHtml(t.name)} (${lo}–${hi} ${LP.UNITS[sys].force}) <button title="Remove tag">×</button>`;
+      chip.querySelector("button").addEventListener("click", async () => {
+        await tagsIdb.delete(t.id);
+        await loadTags();
+      });
+      el.appendChild(chip);
+    });
+  }
+
+  document.getElementById("addTagBtn").addEventListener("click", async () => {
+    const name = document.getElementById("tagName").value.trim();
+    let min = parseFloat(document.getElementById("tagMin").value);
+    let max = parseFloat(document.getElementById("tagMax").value);
+    if (!name || !isFinite(min) || !isFinite(max)) return;
+    if (min > max) { const t = min; min = max; max = t; }
+    await tagsIdb.put({ name, minSI: LP.toSI("force", min, sys), maxSI: LP.toSI("force", max, sys) });
+    document.getElementById("tagName").value = "";
+    document.getElementById("tagMin").value = "";
+    document.getElementById("tagMax").value = "";
+    await loadTags();
+  });
+
+  // Constraint check shared between the main feasibility filter and tag testing.
+  function passesConstraints(r, c) {
+    return r.feasible && r.dThetaDeg <= c.maxDTheta && r.aMaxG <= c.maxG && r.totalTravel <= c.maxTravelSI;
+  }
+
+  // A tag applies to a sample's configuration if, holding every other
+  // parameter fixed, the design still passes all constraints at the low,
+  // mid, and high end of that tag's effort-force range — independent of
+  // whatever Fe the sample itself happened to be drawn with.
+  function computeSampleTags(sampleInput, constraints) {
+    if (!tags.length) return [];
+    const names = [];
+    for (const t of tags) {
+      const testPoints = [t.minSI, (t.minSI + t.maxSI) / 2, t.maxSI];
+      const ok = testPoints.every(FeTest => {
+        const r2 = LP.computeAll(Object.assign({}, sampleInput, { Fe: FeTest }));
+        return passesConstraints(r2, constraints);
+      });
+      if (ok) names.push(t.name);
+    }
+    return names;
   }
 
   // ---------- build parameter table UI ----------
@@ -419,6 +519,7 @@
     });
     refreshLengthTags();
     renderParamTable();
+    renderTagList();
     if (lastRun) runSweep(); // refresh displayed results in the new units
   });
 
@@ -466,12 +567,9 @@
       all.push({ input, r, FloadDevPct, score: 0 });
     }
 
-    const feasible = all.filter(s =>
-      s.r.feasible &&
-      s.r.dThetaDeg <= maxDTheta &&
-      s.r.aMaxG <= maxG &&
-      s.r.totalTravel <= maxTravelSI
-    );
+    const constraints = { maxDTheta, maxG, maxTravelSI };
+    const feasible = all.filter(s => passesConstraints(s.r, constraints));
+    feasible.forEach(s => { s.tags = computeSampleTags(s.input, constraints); });
 
     // composite scoring
     const activeMetrics = METRICS.filter(m => weights[m.id] > 0 && (m.id !== "FloadDevPct" || targetFlSI > 0));
@@ -524,6 +622,12 @@
       <div class="stat accent"><div class="label">Best score</div><div class="value">${best ? best.score.toFixed(4) : "—"}</div></div>
       <div class="stat"><div class="label">Compute time</div><div class="value">${lastRun.elapsedMs.toFixed(1)} <span class="unit">ms</span></div></div>
     `;
+    const tagCoverageEl = document.getElementById("tagCoverage");
+    if (!tags.length) { tagCoverageEl.innerHTML = ""; return; }
+    tagCoverageEl.innerHTML = tags.map(t => {
+      const count = lastRun.feasible.filter(s => s.tags.includes(t.name)).length;
+      return `<span class="tag-chip">${escapeHtml(t.name)}: ${count} of ${lastRun.feasible.length} configs</span>`;
+    }).join("");
   }
 
   // ---------- results table ----------
@@ -545,7 +649,8 @@
     { id: "xMax", label: "x_max", get: s => LP.fromSI("length", s.r.xMax, sys), dec: 3 },
     { id: "vEffortHome", label: "v_e,home", get: s => LP.fromSI("velocity", s.r.vEffortHome, sys), dec: 3 },
     { id: "vLoadHome", label: "v_l,home", get: s => LP.fromSI("velocity", s.r.vLoadHome, sys), dec: 3 },
-    { id: "totalTravel", label: "Total travel", get: s => LP.fromSI("length", s.r.totalTravel, sys), dec: 3 }
+    { id: "totalTravel", label: "Total travel", get: s => LP.fromSI("length", s.r.totalTravel, sys), dec: 3 },
+    { id: "tags", label: "Tags", type: "text", get: s => (s.tags || []).join(", ") }
   ];
   const TABLE_LIMIT = 100;
   let sortState = { key: "score", dir: "desc" };
@@ -574,6 +679,10 @@
 
     const col = TABLE_COLS.find(c => c.id === sortState.key);
     const sorted = lastRun.feasible.slice().sort((a, b) => {
+      if (col.type === "text") {
+        const va = col.get(a, 0), vb = col.get(b, 0);
+        return sortState.dir === "desc" ? vb.localeCompare(va) : va.localeCompare(vb);
+      }
       const va = col.get(a, 0), vb = col.get(b, 0);
       return sortState.dir === "desc" ? vb - va : va - vb;
     });
@@ -588,9 +697,13 @@
       if (isPareto) tr.classList.add("pareto-row");
       TABLE_COLS.forEach(c => {
         const td = document.createElement("td");
-        td.className = "val";
         const v = c.get(s, originalIndex.get(s));
-        td.textContent = isFinite(v) ? v.toFixed(c.dec) : "—";
+        if (c.type === "text") {
+          td.innerHTML = v ? v.split(", ").filter(Boolean).map(name => `<span class="tag-cell-chip">${escapeHtml(name)}</span>`).join("") : `<span class="tag-cell-chip">—</span>`;
+        } else {
+          td.className = "val";
+          td.textContent = isFinite(v) ? v.toFixed(c.dec) : "—";
+        }
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -701,7 +814,10 @@
     const originalIndex = new Map(lastRun.feasible.map((s, i) => [s, i]));
     const rows = samples.map((s, idx) => [
       idx + 1,
-      ...EXPORT_COLS.map(c => Number(c.get(s, originalIndex.get(s)).toFixed(6))),
+      ...EXPORT_COLS.map(c => {
+        const v = c.get(s, originalIndex.get(s));
+        return c.type === "text" ? (v || "none") : Number(v.toFixed(6));
+      }),
       paretoSet.has(originalIndex.get(s)) ? "yes" : "no"
     ]);
     return { headers, rows };
@@ -777,6 +893,7 @@
   renderWeightRows();
   refreshLengthTags();
   renderSavedRuns();
+  loadTags();
 })();
 </script>
 </body>
