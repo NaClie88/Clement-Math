@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Bent Class-3 Lever — Shock Absorber Calculator</title>
 <link rel="stylesheet" href="../shared/theme.css" />
+<style>
+  .bounds-table { width: 100%; border-collapse: collapse; }
+  .bounds-table th {
+    text-align: left; font-family: var(--font-mono); font-size: 10.2px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--ink-faint); padding: 4px 6px; border-bottom: 1px solid var(--line-strong);
+  }
+  .bounds-table td { padding: 6px 6px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .bounds-table tr:last-child td { border-bottom: none; }
+  .bounds-table input[type="number"] { width: 76px; font-size: 12.5px; padding: 5px 6px; }
+  .bounds-table td.param-name { color: var(--ink); white-space: nowrap; }
+
+  .tornado-row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .tornado-row .pname { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); }
+  .tornado-bar-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+  .tornado-bar-fill { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+  .tornado-vals { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 2px; }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -16,10 +33,7 @@
       <p class="sub">Solves the force, travel, and energy relationships for a class-3 lever with a bend at the effort point, driving a load mass down a linear bearing into a spring. Enter your geometry and impact conditions to get testable bench values.</p>
     </div>
     <div class="top-controls">
-      <div class="segmented" id="unitToggle" role="group" aria-label="Unit system">
-        <button data-unit="us" class="active">US CUSTOMARY</button>
-        <button data-unit="si">METRIC</button>
-      </div>
+      <a class="units-btn" id="unitsLink" href="settings.html">⚙ UNITS: <span class="cur" id="unitsSummary">…</span></a>
       <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
     </div>
   </header>
@@ -32,25 +46,32 @@
       <div class="card">
         <h2><span class="n">01</span> Geometry &amp; Layout</h2>
         <div class="field-row">
-          <label>Fulcrum → Effort length (L₁)<span class="hint">pivot to effort-force application point</span></label>
+          <label><span class="label-text">Fulcrum → Effort length (L₁)</span><span class="hint">pivot to effort-force application point</span></label>
           <div class="input-unit">
             <input type="number" id="L1" step="0.01" />
             <span class="unit-tag" data-u="length"></span>
           </div>
         </div>
         <div class="field-row">
-          <label>Effort → Load length (L₂)<span class="hint">effort point to load-force application point</span></label>
+          <label><span class="label-text">Effort → Load length (L₂)</span><span class="hint">effort point to load-force application point</span></label>
           <div class="input-unit">
             <input type="number" id="L2" step="0.01" />
             <span class="unit-tag" data-u="length"></span>
           </div>
         </div>
         <div class="field-row angle-row">
-          <label>Bend angle at effort point (β)<span class="hint">interior angle between the two arm segments — 180° is a straight lever</span></label>
+          <label><span class="label-text">Bend angle at effort point (β)</span><span class="hint">interior angle between the two arm segments — 180° is a straight lever</span></label>
           <div class="slider-line">
             <input type="range" id="betaRange" min="20" max="180" step="1" />
             <input type="number" id="beta" min="20" max="180" step="1" />
-            <span class="unit-tag">deg</span>
+            <span class="unit-tag" data-u="angle"></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Max lever rotation (constraint)</span><span class="hint">physical/mechanical limit — the angular room actually available between your hard stop and full extension</span></label>
+          <div class="input-unit">
+            <input type="number" id="maxDTheta" step="0.5" min="0.5" max="179" />
+            <span class="unit-tag" data-u="angle"></span>
           </div>
         </div>
       </div>
@@ -96,14 +117,14 @@
         </div>
 
         <div class="field-row" id="rowK">
-          <label>Spring rate (k)<span class="hint">from catalog / candidate spring</span></label>
+          <label><span class="label-text">Spring rate (k)</span><span class="hint">from catalog / candidate spring</span></label>
           <div class="input-unit">
             <input type="number" id="k" step="0.1" />
             <span class="unit-tag" data-u="rate"></span>
           </div>
         </div>
         <div class="field-row" id="rowX" style="display:none;">
-          <label>Available spring travel<span class="hint">packaging limit for the spring stroke</span></label>
+          <label><span class="label-text">Available spring travel</span><span class="hint">packaging limit for the spring stroke</span></label>
           <div class="input-unit">
             <input type="number" id="xBudget" step="0.01" />
             <span class="unit-tag" data-u="length"></span>
@@ -113,7 +134,7 @@
         <details class="advanced">
           <summary>Advanced — mechanism efficiency</summary>
           <div class="field-row">
-            <label>Efficiency (η)<span class="hint">lumps pivot friction, lever inertia, bearing drag. 1.0 = lossless</span></label>
+            <label><span class="label-text">Efficiency (η)</span><span class="hint">lumps pivot friction, lever inertia, bearing drag. 1.0 = lossless</span></label>
             <div class="input-unit">
               <input type="number" id="eta" step="1" min="10" max="100" />
               <span class="unit-tag">%</span>
@@ -129,14 +150,14 @@
           <label><span class="label-text">Effort-axis offset from dead center (α<sub>e</sub>)</span><span class="hint">0° = effort bearing exactly aligned with L₁ at the hard stop</span></label>
           <div class="input-unit">
             <input type="number" id="alphaEffort" step="0.5" min="0" max="45" />
-            <span class="unit-tag">deg</span>
+            <span class="unit-tag" data-u="angle"></span>
           </div>
         </div>
         <div class="field-row">
           <label><span class="label-text">Load-axis offset from dead center (α<sub>l</sub>)</span><span class="hint">0° = load bearing exactly aligned with R at the hard stop</span></label>
           <div class="input-unit">
             <input type="number" id="alphaLoad" step="0.5" min="0" max="45" />
-            <span class="unit-tag">deg</span>
+            <span class="unit-tag" data-u="angle"></span>
           </div>
         </div>
         <div class="field-row">
@@ -148,6 +169,17 @@
         </div>
       </div>
 
+      <div class="card">
+        <h2><span class="n">05</span> Testing Bounds (optional)</h2>
+        <p class="note" style="margin-top:-6px;">Fill in a lower/upper bound for any parameter you're still uncertain of and the panel on the right shows a one-at-a-time sensitivity range for the key outputs — how much each uncertain input actually moves the result, holding everything else at its primary value above. Leave blank to skip a parameter.</p>
+        <div class="table-wrap">
+          <table class="bounds-table" id="boundsTable">
+            <thead><tr><th>Parameter</th><th>Lower</th><th>Upper</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- ============ OUTPUT COLUMN ============ -->
@@ -155,14 +187,12 @@
 
       <div class="card diagram-card">
         <h2 style="margin:16px 16px 0;"><span class="n">◆</span> Schematic (to scale, live)</h2>
-        <canvas id="lever" width="900" height="340"></canvas>
+        <canvas id="lever" width="900" height="360"></canvas>
         <div class="diagram-legend">
           <span class="item"><span class="swatch" style="background:var(--ink-faint); border-top:2px dashed var(--ink-faint); height:0;"></span> ready / hard stop</span>
           <span class="item"><span class="swatch" style="background:var(--ink);"></span> full extension</span>
-          <span class="item"><span class="swatch" style="background:var(--accent);"></span> effort force</span>
-          <span class="item"><span class="swatch" style="background:var(--ok);"></span> linear bearing + spring</span>
-          <span class="item"><span class="swatch" style="background:var(--ink-faint); border-top:1px dotted var(--ink-faint); height:0;"></span> dead-center reference</span>
-          <span class="item"><span class="swatch" style="background:var(--accent); border-top:2px dashed var(--accent); height:0;"></span> mounted axis offset (α)</span>
+          <span class="item"><span class="swatch" style="background:var(--accent);"></span> effort mass + force (from the right)</span>
+          <span class="item"><span class="swatch" style="background:var(--ok);"></span> load mass + linear rail + spring (on the left)</span>
         </div>
       </div>
 
@@ -275,6 +305,12 @@
       </div>
 
       <div class="card">
+        <h2><span class="n">±</span> Sensitivity Across Testing Bounds</h2>
+        <p class="note" id="tornadoEmpty" style="margin-top:-6px;">Fill in a lower/upper bound for at least one parameter in card 05 to see how much it moves the key outputs.</p>
+        <div id="tornadoBody"></div>
+      </div>
+
+      <div class="card">
         <h2><span class="n">✓</span> Testable Values Summary</h2>
         <div class="table-wrap">
           <table class="spec" id="summaryTable">
@@ -309,7 +345,7 @@
         <div class="formula">KE_in = ½·m_e·v_e²
 s_e(min) = KE_in / F_effort
 Δθ = s_e / L₁ &nbsp; (rotation from hard stop to full extension)</div>
-        <p>Raising the allowable design force F_effort is the only way to shrink s_e for a given impact energy — this is the direct answer to "how little can the effort mass move."</p>
+        <p>Raising the allowable design force F_effort is the only way to shrink s_e for a given impact energy — this is the direct answer to "how little can the effort mass move." The max lever rotation field (card 01) is your actual mechanical ceiling on Δθ — the status panel flags a design that needs more rotation than the hardware physically has room for.</p>
       </div>
       <div>
         <h3>Load handoff &amp; spring sizing</h3>
@@ -330,59 +366,75 @@ I_eff = I_lever + m_e·L1²·sin²(α_e) + m_l·R²·sin²(α_l)
 v_e,home = L1·ω_home·sin(α_e)
 v_l,home = R·ω_home·sin(α_l)</div>
         <p>At α_e = α_l = 0, both v_e,home and v_l,home are exactly zero — all of E_return converts into spinning the lever itself, which is a far smaller thing to arrest than two heavy translating masses. This is a purely geometric answer, not a damping one: no buffer material required. The catch is that exact dead center also means zero torque at that same point, so the forward stroke needs a small deliberate offset (or an off-axis component in the incoming impact) to break away reliably — α_e and α_l let you dial in exactly how much residual return velocity that reliability margin costs.</p>
+        <p><strong>Note on the diagram's layout:</strong> the schematic draws the effort and load sliders on one common horizontal rail (spring/rail on the left, effort force arriving from the right, in line with that rail) for a compact, easy-to-read packaging view. Individually, α_e=0 and α_l=0 are each independently well-defined regardless of layout. Forcing the two sliders onto one truly common straight rail while also holding both α's at exactly 0° simultaneously is only geometrically exact for a straight lever (β=180°) — for a genuinely bent lever, a real build on a single common rail will have a small minimum combined offset baked in by β. Treat the diagram as the packaging concept; verify the exact dead-center geometry for your specific rail arrangement in CAD.</p>
+      </div>
+      <div>
+        <h3>Sensitivity across testing bounds</h3>
+        <p>For each parameter with a lower/upper bound filled in (card 05), the tool re-runs the physics with just that one parameter swapped to its bound value — everything else held at its primary value — and reports the resulting range for the key outputs. This is a standard one-at-a-time ("tornado") sensitivity check: it tells you which uncertain input actually matters, not a worst-case combination of all of them at once (for that, sweep the full space in the Design Space Explorer).</p>
       </div>
     </div>
     <p class="note" style="margin-top:14px;">This is a lumped-parameter hand-calculation intended for scoping bench-test hardware (spring rate, stroke, arm lengths) — not a certified dynamic simulation. Arc travel on the load side is a first-order approximation of the true slider/connecting-link path; the return-stroke section assumes a slotted/Scotch-yoke coupling specifically (a simple connecting-rod link will behave similarly near dead center but not identically). Verify against a CAD motion study or prototype once β, the rotation range, or the offset angles are large.</p>
+    <p class="note"><a class="backlink" href="optimizer.html">→ Design Space Explorer</a> — run a full Monte Carlo sweep instead of one-at-a-time bounds. <a class="backlink" href="settings.html">→ Unit Settings</a> — change any unit, verify the conversion self-test.</p>
   </footer>
 
 </div>
 
+<script src="../shared/units.js"></script>
+<script src="../shared/unit-prefs.js"></script>
 <script src="physics.js"></script>
 <script>
 (function () {
   "use strict";
 
-  const { IN_TO_M, LBF_TO_N, LBM_TO_KG, DEG_TO_RAD, G, INERTIA_US_TO_SI, UNITS, toSI, fromSI, clamp } = window.LeverPhysics;
+  const SU = window.SharedUnits;
+  const { clamp } = window.LeverPhysics;
+  const DEG_TO_RAD = Math.PI / 180;
 
-  // ---------- state: canonical SI values ----------
-  let sys = "us";
+  let unitPrefs = window.SharedUnitPrefs.load();
+
+  // ---------- parameter metadata (id -> unit kind; 'deg' handled via angle pref, 'pct' is dimensionless) ----------
+  const KIND_OF = {
+    L1: "length", L2: "length", Fe: "force", me: "mass", ve: "velocity",
+    ml: "mass", k: "rate", xBudget: "length", ILever: "inertia"
+  };
+  const ANGLE_IDS = { beta: "beta", maxDTheta: "maxDTheta", alphaEffort: "alphaEffort", alphaLoad: "alphaLoad" };
+
+  function uOf(kind) { return unitPrefs[kind]; }
+  function toSI(kind, v) { return SU.toSI(kind, parseFloat(v) || 0, uOf(kind)); }
+  function fromSI(kind, v) { return SU.fromSI(kind, v, uOf(kind)); }
+  function toSIAngleDeg(vInPrefUnit) { return SU.fromSI("angle", SU.toSI("angle", parseFloat(vInPrefUnit) || 0, uOf("angle")), "deg"); }
+  function fromDegToPrefAngle(deg) { return SU.fromSI("angle", SU.toSI("angle", deg, "deg"), uOf("angle")); }
+
+  // ---------- state: canonical SI values (angles stored as plain degrees, physics.js's contract) ----------
   const state = {
-    L1: 2.0 * IN_TO_M,
-    L2: 5.0 * IN_TO_M,
-    beta: 150,
-    Fe: 300 * LBF_TO_N,
-    me: 0.5 * LBM_TO_KG,
-    ve: 120 * IN_TO_M,
-    ml: 2.0 * LBM_TO_KG,
-    k: 50 * LBF_TO_N / IN_TO_M,
-    xBudget: 1.0 * IN_TO_M,
-    eta: 0.85,
-    springMode: "givenK",
-    alphaEffort: 3,
-    alphaLoad: 3,
-    ILever: 1.0 * INERTIA_US_TO_SI
+    L1: 0.0508, L2: 0.127, beta: 150, maxDTheta: 150,
+    Fe: 1334.4664845781501, me: 0.226796185, ve: 3.048,
+    ml: 0.90718474, k: 8756.339, xBudget: 0.0254,
+    eta: 0.85, springMode: "givenK",
+    alphaEffort: 3, alphaLoad: 3, ILever: 0.00029263965342920003
   };
 
-  const ids = ["L1", "L2", "Fe", "me", "ve", "ml", "k", "xBudget", "ILever"];
-  const kindOf = { L1: "length", L2: "length", Fe: "force", me: "mass", ve: "velocity", ml: "mass", k: "rate", xBudget: "length", ILever: "inertia" };
+  const lengthMassForceIds = ["L1", "L2", "Fe", "me", "ve", "ml", "k", "xBudget", "ILever"];
 
   function refreshUnitTags() {
     document.querySelectorAll(".unit-tag[data-u]").forEach(el => {
-      el.textContent = UNITS[sys][el.getAttribute("data-u")];
+      const kind = el.getAttribute("data-u");
+      el.textContent = SU.label(kind, uOf(kind));
     });
+    document.getElementById("unitsSummary").textContent =
+      `${uOf("length")}/${uOf("force")}/${uOf("mass")}`;
   }
 
   function pushStateToInputs() {
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      const v = fromSI(kindOf[id], state[id], sys);
-      el.value = round(v, 4);
+    lengthMassForceIds.forEach(id => {
+      document.getElementById(id).value = round(fromSI(KIND_OF[id], state[id]), 4);
     });
-    document.getElementById("beta").value = state.beta;
-    document.getElementById("betaRange").value = state.beta;
+    ["beta", "maxDTheta", "alphaEffort", "alphaLoad"].forEach(id => {
+      document.getElementById(id).value = round(fromDegToPrefAngle(state[id]), 3);
+    });
+    document.getElementById("betaRange").value = state.beta; // slider always stays in degrees internally
     document.getElementById("eta").value = Math.round(state.eta * 100);
-    document.getElementById("alphaEffort").value = state.alphaEffort;
-    document.getElementById("alphaLoad").value = state.alphaLoad;
+    renderBoundsTable();
   }
 
   function round(v, d) {
@@ -394,24 +446,34 @@ v_l,home = R·ω_home·sin(α_l)</div>
     return v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
-  // ---------- wire up inputs ----------
-  ids.forEach(id => {
+  // ---------- wire up primary inputs ----------
+  lengthMassForceIds.forEach(id => {
     document.getElementById(id).addEventListener("input", e => {
-      state[id] = toSI(kindOf[id], e.target.value, sys);
+      state[id] = toSI(KIND_OF[id], e.target.value);
+      compute();
+    });
+  });
+  ["maxDTheta", "alphaEffort", "alphaLoad"].forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      let deg = toSIAngleDeg(e.target.value);
+      if (!isFinite(deg)) deg = state[id];
+      if (id === "alphaEffort" || id === "alphaLoad") deg = clamp(deg, 0, 89.9);
+      if (id === "maxDTheta") deg = clamp(deg, 0.1, 179.9);
+      state[id] = deg;
       compute();
     });
   });
   document.getElementById("beta").addEventListener("input", e => {
-    let v = parseFloat(e.target.value);
-    if (isNaN(v)) return;
-    v = Math.min(180, Math.max(1, v));
-    state.beta = v;
-    document.getElementById("betaRange").value = v;
+    let deg = toSIAngleDeg(e.target.value);
+    if (!isFinite(deg)) return;
+    deg = clamp(deg, 1, 180);
+    state.beta = deg;
+    document.getElementById("betaRange").value = deg;
     compute();
   });
   document.getElementById("betaRange").addEventListener("input", e => {
     state.beta = parseFloat(e.target.value);
-    document.getElementById("beta").value = state.beta;
+    document.getElementById("beta").value = round(fromDegToPrefAngle(state.beta), 3);
     compute();
   });
   document.getElementById("eta").addEventListener("input", e => {
@@ -419,18 +481,6 @@ v_l,home = R·ω_home·sin(α_l)</div>
     if (isNaN(v)) v = 85;
     v = Math.min(100, Math.max(5, v));
     state.eta = v / 100;
-    compute();
-  });
-  document.getElementById("alphaEffort").addEventListener("input", e => {
-    let v = parseFloat(e.target.value);
-    if (isNaN(v)) v = 0;
-    state.alphaEffort = clamp(v, 0, 89.9);
-    compute();
-  });
-  document.getElementById("alphaLoad").addEventListener("input", e => {
-    let v = parseFloat(e.target.value);
-    if (isNaN(v)) v = 0;
-    state.alphaLoad = clamp(v, 0, 89.9);
     compute();
   });
   document.querySelectorAll('input[name="springMode"]').forEach(r => {
@@ -446,26 +496,122 @@ v_l,home = R·ω_home·sin(α_l)</div>
     });
   });
 
-  document.getElementById("unitToggle").addEventListener("click", e => {
-    const btn = e.target.closest("button[data-unit]");
-    if (!btn) return;
-    sys = btn.getAttribute("data-unit");
-    document.querySelectorAll("#unitToggle button").forEach(b => b.classList.toggle("active", b === btn));
-    refreshUnitTags();
-    pushStateToInputs();
-    compute();
-  });
-
   document.getElementById("themeToggle").addEventListener("click", () => {
     const root = document.documentElement;
     const cur = root.getAttribute("data-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    let next;
-    if (!cur) next = prefersDark ? "light" : "dark";
-    else next = cur === "dark" ? "light" : "dark";
-    root.setAttribute("data-theme", next);
+    root.setAttribute("data-theme", !cur ? (prefersDark ? "light" : "dark") : (cur === "dark" ? "light" : "dark"));
     drawDiagram(lastCompute);
   });
+
+  // re-read unit prefs if changed on the settings page (same tab back-nav, or another tab)
+  window.addEventListener("focus", () => { unitPrefs = window.SharedUnitPrefs.load(); refreshUnitTags(); pushStateToInputs(); compute(); });
+  window.addEventListener("storage", e => { if (e.key === window.SharedUnitPrefs.STORAGE_KEY) { unitPrefs = window.SharedUnitPrefs.load(); refreshUnitTags(); pushStateToInputs(); compute(); } });
+
+  // ---------- testing bounds (per-parameter, display units) ----------
+  const BOUNDS_PARAMS = [
+    { id: "L1", label: "L₁", kind: "length" },
+    { id: "L2", label: "L₂", kind: "length" },
+    { id: "beta", label: "β", kind: "angle" },
+    { id: "Fe", label: "Fₑ", kind: "force" },
+    { id: "me", label: "mₑ", kind: "mass" },
+    { id: "ve", label: "vₑ", kind: "velocity" },
+    { id: "ml", label: "mₗ", kind: "mass" },
+    { id: "eta", label: "η (%)", kind: "pct" },
+    { id: "alphaEffort", label: "αₑ", kind: "angle" },
+    { id: "alphaLoad", label: "αₗ", kind: "angle" },
+    { id: "ILever", label: "I_lever", kind: "inertia" }
+  ];
+  const bounds = {}; // id -> { lo: displayVal|null, hi: displayVal|null }
+  BOUNDS_PARAMS.forEach(p => { bounds[p.id] = { lo: null, hi: null }; });
+
+  function renderBoundsTable() {
+    const tbody = document.querySelector("#boundsTable tbody");
+    tbody.innerHTML = "";
+    BOUNDS_PARAMS.forEach(p => {
+      if ((p.id === "k" || p.id === "xBudget")) return;
+      const tr = document.createElement("tr");
+      const unit = p.kind === "pct" ? "%" : p.kind === "angle" ? SU.label("angle", uOf("angle")) : SU.label(p.kind, uOf(p.kind));
+      tr.innerHTML = `
+        <td class="param-name">${p.label} <span class="hint" style="font-size:10px;">${unit}</span></td>
+        <td><input type="number" step="any" class="b-lo" placeholder="—"></td>
+        <td><input type="number" step="any" class="b-hi" placeholder="—"></td>`;
+      const loEl = tr.querySelector(".b-lo"), hiEl = tr.querySelector(".b-hi");
+      if (bounds[p.id].lo !== null) loEl.value = bounds[p.id].lo;
+      if (bounds[p.id].hi !== null) hiEl.value = bounds[p.id].hi;
+      loEl.addEventListener("input", e => { bounds[p.id].lo = e.target.value === "" ? null : parseFloat(e.target.value); compute(); });
+      hiEl.addEventListener("input", e => { bounds[p.id].hi = e.target.value === "" ? null : parseFloat(e.target.value); compute(); });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function boundToSI(p, displayVal) {
+    if (p.kind === "pct") return displayVal / 100;
+    if (p.kind === "angle") return toSIAngleDeg(displayVal);
+    return SU.toSI(p.kind, displayVal, uOf(p.kind));
+  }
+
+  const TORNADO_METRICS = [
+    { id: "Fl", label: "Load force", kind: "force", get: r => r.Fl },
+    { id: "sE", label: "Effort travel", kind: "length", get: r => r.sE },
+    { id: "xMax", label: "Max load travel", kind: "length", get: r => r.xMax },
+    { id: "vLoadHome", label: "Load return velocity", kind: "velocity", get: r => r.vLoadHome }
+  ];
+
+  function computeSensitivity() {
+    const active = BOUNDS_PARAMS.filter(p => bounds[p.id].lo !== null || bounds[p.id].hi !== null);
+    if (!active.length) return null;
+
+    const rows = active.map(p => {
+      const b = bounds[p.id];
+      const loSI = b.lo !== null ? boundToSI(p, b.lo) : state[p.id];
+      const hiSI = b.hi !== null ? boundToSI(p, b.hi) : state[p.id];
+      const lo = Math.min(loSI, hiSI), hi = Math.max(loSI, hiSI);
+      const inputLo = Object.assign({}, state, { [p.id]: lo });
+      const inputHi = Object.assign({}, state, { [p.id]: hi });
+      const rLo = window.LeverPhysics.computeAll(inputLo);
+      const rHi = window.LeverPhysics.computeAll(inputHi);
+      return { param: p, rLo, rHi };
+    });
+    return rows;
+  }
+
+  function renderTornado(rows) {
+    const body = document.getElementById("tornadoBody");
+    const empty = document.getElementById("tornadoEmpty");
+    if (!rows) { body.innerHTML = ""; empty.style.display = ""; return; }
+    empty.style.display = "none";
+    body.innerHTML = "";
+    TORNADO_METRICS.forEach(m => {
+      const h3 = document.createElement("div");
+      h3.style.cssText = "font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin:14px 0 8px;";
+      h3.textContent = m.label;
+      body.appendChild(h3);
+
+      const vals = rows.map(row => ({
+        name: row.param.label,
+        lo: fromSI(m.kind, m.get(row.rLo)),
+        hi: fromSI(m.kind, m.get(row.rHi))
+      }));
+      const allVals = vals.flatMap(v => [v.lo, v.hi]).filter(isFinite);
+      const gMin = Math.min(...allVals), gMax = Math.max(...allVals);
+
+      vals.forEach(v => {
+        const lo = Math.min(v.lo, v.hi), hi = Math.max(v.lo, v.hi);
+        const row = document.createElement("div");
+        row.className = "tornado-row";
+        const leftPct = gMax > gMin ? ((lo - gMin) / (gMax - gMin)) * 100 : 0;
+        const widthPct = gMax > gMin ? ((hi - lo) / (gMax - gMin)) * 100 : 100;
+        row.innerHTML = `
+          <div class="pname">${v.name}</div>
+          <div>
+            <div class="tornado-bar-track"><div class="tornado-bar-fill" style="left:${leftPct}%; width:${Math.max(widthPct, 1.5)}%;"></div></div>
+            <div class="tornado-vals"><span>${fmt(lo, 3)} ${SU.label(m.kind, uOf(m.kind))}</span><span>${fmt(hi, 3)} ${SU.label(m.kind, uOf(m.kind))}</span></div>
+          </div>`;
+        body.appendChild(row);
+      });
+    });
+  }
 
   // ---------- physics ----------
   let lastCompute = null;
@@ -490,9 +636,8 @@ v_l,home = R·ω_home·sin(α_l)</div>
   function compute() {
     const r = computeAll();
     lastCompute = r;
-    const u = UNITS[sys];
+    const angleUnit = SU.label("angle", uOf("angle"));
 
-    // status
     const statusRow = document.getElementById("statusRow");
     statusRow.innerHTML = "";
     if (r.warnings.length === 0) {
@@ -502,62 +647,59 @@ v_l,home = R·ω_home·sin(α_l)</div>
       r.warnings.forEach(w => statusRow.appendChild(statusChip(w, false)));
     }
 
-    setStat("out_Fl", fromSI("force", r.Fl, sys), u.force, 2);
+    setStat("out_Fl", fromSI("force", r.Fl), SU.label("force", uOf("force")), 2);
     setStat("out_MA", r.MA, "", 3);
-    setStat("out_R", fromSI("length", r.R, sys), u.length, 3);
-    setStat("out_gamma", r.gammaDeg, "deg", 1);
+    setStat("out_R", fromSI("length", r.R), SU.label("length", uOf("length")), 3);
+    setStat("out_gamma", fromDegToPrefAngle(r.gammaDeg), angleUnit, 3);
 
-    setStat("out_se", fromSI("length", r.sE, sys), u.length, 3);
-    setStat("out_dtheta", r.dThetaDeg, "deg", 1);
-    setStat("out_sl", fromSI("length", r.sL, sys), u.length, 3);
-    setStat("out_vl", fromSI("velocity", r.vL, sys), u.velocity, 2);
+    setStat("out_se", fromSI("length", r.sE), SU.label("length", uOf("length")), 3);
+    setStat("out_dtheta", fromDegToPrefAngle(r.dThetaDeg), angleUnit, 3);
+    setStat("out_sl", fromSI("length", r.sL), SU.label("length", uOf("length")), 3);
+    setStat("out_vl", fromSI("velocity", r.vL), SU.label("velocity", uOf("velocity")), 2);
     setStat("out_te", r.tE * 1000, "ms", 2);
     setStat("out_tl", r.tL * 1000, "ms", 2);
 
-    setStat("out_xmax", fromSI("length", r.xMax, sys), u.length, 3);
-    setStat("out_kreq", fromSI("rate", r.kUsed, sys), u.rate, 2);
-    setStat("out_Fspring", fromSI("force", r.FspringMax, sys), u.force, 2);
+    setStat("out_xmax", fromSI("length", r.xMax), SU.label("length", uOf("length")), 3);
+    setStat("out_kreq", fromSI("rate", r.kUsed), SU.label("rate", uOf("rate")), 2);
+    setStat("out_Fspring", fromSI("force", r.FspringMax), SU.label("force", uOf("force")), 2);
     setStat("out_tspring", r.tSpring * 1000, "ms", 2);
 
-    // return stroke
     const returnStatusRow = document.getElementById("returnStatusRow");
     returnStatusRow.innerHTML = "";
     r.returnWarnings.forEach(w => returnStatusRow.appendChild(statusChip(w, r.deadCenter && r.Ieff > 1e-12)));
 
-    const energyUnit = sys === "us" ? "in·lbf" : "J";
-    const energyReturn = sys === "us" ? r.Ereturn / (LBF_TO_N * IN_TO_M) : r.Ereturn;
-    setStat("out_Ereturn", energyReturn, energyUnit, 4);
-    setStat("out_Ieff", fromSI("inertia", r.Ieff, sys), u.inertia, sys === "us" ? 4 : 6);
+    setStat("out_Ereturn", fromSI("energy", r.Ereturn), SU.label("energy", uOf("energy")), 4);
+    setStat("out_Ieff", fromSI("inertia", r.Ieff), SU.label("inertia", uOf("inertia")), 6);
     setStat("out_omega", r.omegaHome, "rad/s", 2);
     setStat("out_omegaRpm", r.omegaHomeRpm, "rpm-eq.", 1);
-    setStat("out_veHome", fromSI("velocity", r.vEffortHome, sys), u.velocity, 3);
-    setStat("out_vlHome", fromSI("velocity", r.vLoadHome, sys), u.velocity, 3);
+    setStat("out_veHome", fromSI("velocity", r.vEffortHome), SU.label("velocity", uOf("velocity")), 3);
+    setStat("out_vlHome", fromSI("velocity", r.vLoadHome), SU.label("velocity", uOf("velocity")), 3);
 
     buildSummary(r);
     drawDiagram(r);
+    renderTornado(computeSensitivity());
   }
 
   function buildSummary(r) {
-    const u = UNITS[sys];
-    const energyUnit = sys === "us" ? "in·lbf" : "J";
-    const energyReturn = sys === "us" ? r.Ereturn / (LBF_TO_N * IN_TO_M) : r.Ereturn;
+    const angleUnit = SU.label("angle", uOf("angle"));
     const rows = [
-      ["Load force (F_l)", fromSI("force", r.Fl, sys), u.force, 2],
-      ["Effective load arm (R)", fromSI("length", r.R, sys), u.length, 3],
-      ["Lever rotation, hard stop → full extension (Δθ)", r.dThetaDeg, "deg", 1],
-      ["Minimum effort-side travel (s_e)", fromSI("length", r.sE, sys), u.length, 3],
-      ["Load-side arc travel, powered phase (s_l)", fromSI("length", r.sL, sys), u.length, 3],
-      ["Load handoff velocity (v_l)", fromSI("velocity", r.vL, sys), u.velocity, 2],
-      [state.springMode === "givenK" ? "Max load-mass travel (x_max)" : "Load-mass travel (from budget)", fromSI("length", r.xMax, sys), u.length, 3],
-      [state.springMode === "givenK" ? "Spring rate (as entered)" : "Required spring rate", fromSI("rate", r.kUsed, sys), u.rate, 2],
-      ["Peak spring force", fromSI("force", r.FspringMax, sys), u.force, 2],
+      ["Load force (F_l)", fromSI("force", r.Fl), SU.label("force", uOf("force")), 2],
+      ["Effective load arm (R)", fromSI("length", r.R), SU.label("length", uOf("length")), 3],
+      ["Lever rotation, hard stop → full extension (Δθ)", fromDegToPrefAngle(r.dThetaDeg), angleUnit, 3],
+      ["Max lever rotation constraint", fromDegToPrefAngle(r.maxDThetaDeg), angleUnit, 3],
+      ["Minimum effort-side travel (s_e)", fromSI("length", r.sE), SU.label("length", uOf("length")), 3],
+      ["Load-side arc travel, powered phase (s_l)", fromSI("length", r.sL), SU.label("length", uOf("length")), 3],
+      ["Load handoff velocity (v_l)", fromSI("velocity", r.vL), SU.label("velocity", uOf("velocity")), 2],
+      [state.springMode === "givenK" ? "Max load-mass travel (x_max)" : "Load-mass travel (from budget)", fromSI("length", r.xMax), SU.label("length", uOf("length")), 3],
+      [state.springMode === "givenK" ? "Spring rate (as entered)" : "Required spring rate", fromSI("rate", r.kUsed), SU.label("rate", uOf("rate")), 2],
+      ["Peak spring force", fromSI("force", r.FspringMax), SU.label("force", uOf("force")), 2],
       ["Peak deceleration at max compression", r.aMaxG, "g", 2],
-      ["Total linear-bearing travel needed", fromSI("length", r.totalTravel, sys), u.length, 3],
+      ["Total linear-bearing travel needed", fromSI("length", r.totalTravel), SU.label("length", uOf("length")), 3],
       ["Total event duration (est.)", r.totalTime * 1000, "ms", 2],
-      ["Round-trip return energy at home stop", energyReturn, energyUnit, 4],
+      ["Round-trip return energy at home stop", fromSI("energy", r.Ereturn), SU.label("energy", uOf("energy")), 4],
       ["Lever spin at home contact (ω)", r.omegaHome, "rad/s", 2],
-      ["Effort mass return velocity at contact", fromSI("velocity", r.vEffortHome, sys), u.velocity, 3],
-      ["Load mass return velocity at contact", fromSI("velocity", r.vLoadHome, sys), u.velocity, 3]
+      ["Effort mass return velocity at contact", fromSI("velocity", r.vEffortHome), SU.label("velocity", uOf("velocity")), 3],
+      ["Load mass return velocity at contact", fromSI("velocity", r.vLoadHome), SU.label("velocity", uOf("velocity")), 3]
     ];
     const tbody = document.querySelector("#summaryTable tbody");
     tbody.innerHTML = "";
@@ -576,7 +718,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
     });
   }
 
-  // ---------- diagram ----------
+  // ---------- diagram: spring/rail on the left, effort force arriving from the right, colinear axis ----------
   const canvas = document.getElementById("lever");
   const ctx = canvas.getContext("2d");
 
@@ -588,16 +730,21 @@ v_l,home = R·ω_home·sin(α_l)</div>
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(340 * dpr);
+    canvas.height = Math.round(360 * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (lastCompute) drawDiagram(lastCompute);
   }
   window.addEventListener("resize", resizeCanvas);
 
+  function massBoxSide(massSI) {
+    // mild cube-root scaling so the block visibly grows with mass without exploding
+    return clamp(10 + Math.cbrt(Math.max(massSI, 1e-6)) * 16, 12, 46);
+  }
+
   function drawDiagram(r) {
     if (!r) return;
     const rect = canvas.getBoundingClientRect();
-    const W = rect.width || 900, H = 340;
+    const W = rect.width || 900, H = 360;
     ctx.clearRect(0, 0, W, H);
 
     const ink = cssVar("--ink");
@@ -609,167 +756,129 @@ v_l,home = R·ω_home·sin(α_l)</div>
 
     const { L1, L2, beta } = r.geom;
     const span = Math.max(L1 + L2, r.R || 0, 0.05);
-    const scale = (W * 0.42) / span; // px per meter, leaves room for bearing/spring on the right
+    const scale = (W * 0.30) / span;
 
-    const F = { x: W * 0.18, y: H * 0.58 };
-    const theta0 = -28 * DEG_TO_RAD; // schematic "ready" orientation of FE
+    const railY = H * 0.66;
+    const F = { x: W * 0.54, y: H * 0.16 };
+    const theta0 = 80 * DEG_TO_RAD; // ready pose: F->E points down-and-slightly-right
 
-    function armPts(theta0) {
-      const E = { x: F.x + L1 * scale * Math.cos(theta0), y: F.y + L1 * scale * Math.sin(theta0) };
-      const phiEF = theta0 + Math.PI;
+    function armPts(theta) {
+      const E = { x: F.x + L1 * scale * Math.cos(theta), y: F.y + L1 * scale * Math.sin(theta) };
+      const phiEF = theta + Math.PI;
       const angleEP = phiEF - beta;
       const P = { x: E.x + L2 * scale * Math.cos(angleEP), y: E.y + L2 * scale * Math.sin(angleEP) };
       return { E, P };
     }
 
     const ready = armPts(theta0);
-    const full = armPts(theta0 - r.dTheta); // rotate "up" toward full extension
+    const full = armPts(theta0 - r.dTheta);
+
+    // the common rail (spring/load on the left, effort slider on the right)
+    const railLeftX = W * 0.08;
+    const railRightX = Math.max(full.E.x, ready.E.x) + 40;
+    ctx.strokeStyle = line; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(railLeftX, railY); ctx.lineTo(railRightX, railY); ctx.stroke();
+
+    // wall + spring at the far LEFT
+    const wallX = railLeftX;
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(wallX, railY - 20); ctx.lineTo(wallX, railY + 20); ctx.stroke();
+    const springEndX = wallX + Math.max(50, (Math.min(full.P.x, ready.P.x) - wallX) * 0.5);
+    ctx.strokeStyle = inkSoft; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(wallX, railY);
+    const coils = 6, seg = (springEndX - wallX) / coils;
+    for (let i = 0; i < coils; i++) ctx.lineTo(wallX + seg * (i + 0.5), railY + (i % 2 === 0 ? -8 : 8));
+    ctx.lineTo(springEndX, railY);
+    ctx.stroke();
+    ctx.fillStyle = inkFaint; ctx.font = "10px " + cssVar("--font-mono");
+    ctx.fillText("spring", wallX + 6, railY - 26);
 
     // ground/pivot hatch symbol at F
-    ctx.strokeStyle = line;
-    ctx.fillStyle = inkFaint;
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = line; ctx.fillStyle = inkFaint; ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(F.x - 11, F.y + 16); ctx.lineTo(F.x + 11, F.y + 16); ctx.lineTo(F.x, F.y); ctx.closePath();
+    ctx.moveTo(F.x - 11, F.y - 16); ctx.lineTo(F.x + 11, F.y - 16); ctx.lineTo(F.x, F.y); ctx.closePath();
     ctx.stroke();
     for (let i = -10; i <= 10; i += 5) {
-      ctx.beginPath(); ctx.moveTo(F.x + i, F.y + 16); ctx.lineTo(F.x + i - 5, F.y + 24); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(F.x + i, F.y - 16); ctx.lineTo(F.x + i - 5, F.y - 24); ctx.stroke();
     }
 
     function drawArm(pts, style) {
-      ctx.strokeStyle = style.color;
-      ctx.lineWidth = style.width;
+      ctx.strokeStyle = style.color; ctx.lineWidth = style.width;
       ctx.setLineDash(style.dash || []);
       ctx.beginPath();
       ctx.moveTo(F.x, F.y); ctx.lineTo(pts.E.x, pts.E.y); ctx.lineTo(pts.P.x, pts.P.y);
       ctx.stroke();
       ctx.setLineDash([]);
     }
-
-    // ready (dashed, faint)
     drawArm(ready, { color: inkFaint, width: 1.6, dash: [5, 4] });
-    // full extension (solid, bold)
     drawArm(full, { color: ink, width: 2.6 });
 
     // rotation sweep arc at F
-    ctx.strokeStyle = inkFaint;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 3]);
+    ctx.strokeStyle = inkFaint; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
     ctx.beginPath();
-    const arcR = L1 * scale * 0.55;
-    ctx.arc(F.x, F.y, arcR, -theta0 * -1 + Math.PI, -theta0 * -1 + Math.PI, false); // no-op guard
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(F.x, F.y, arcR, theta0, theta0 - r.dTheta, true);
+    ctx.arc(F.x, F.y, L1 * scale * 0.5, theta0, theta0 - r.dTheta, true);
     ctx.stroke();
     ctx.setLineDash([]);
-
-    // dead-center alignment indicators: reference = home arm direction, actual = mounted bearing axis (offset by alpha)
-    function drawAlignment(refPt, alpha, color, len) {
-      const refAngle = Math.atan2(refPt.y - F.y, refPt.x - F.x);
-      const mountAngle = refAngle + alpha;
-      ctx.strokeStyle = inkFaint;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([1, 3]);
-      ctx.beginPath();
-      ctx.moveTo(F.x, F.y);
-      ctx.lineTo(F.x + Math.cos(refAngle) * len, F.y + Math.sin(refAngle) * len);
-      ctx.stroke();
-      if (Math.abs(alpha) > 1e-4) {
-        ctx.strokeStyle = color;
-        ctx.setLineDash([4, 3]);
-        ctx.beginPath();
-        ctx.moveTo(F.x, F.y);
-        ctx.lineTo(F.x + Math.cos(mountAngle) * len, F.y + Math.sin(mountAngle) * len);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.arc(F.x, F.y, len * 0.3, refAngle, mountAngle, alpha < 0);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    }
-    drawAlignment(ready.E, r.geom.alphaEffort, accent, L1 * scale * 0.8);
-    drawAlignment(ready.P, r.geom.alphaLoad, ok, r.R * scale * 0.7);
 
     // fulcrum point
     ctx.fillStyle = ink;
     ctx.beginPath(); ctx.arc(F.x, F.y, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = inkSoft;
-    ctx.font = "11px " + cssVar("--font-mono");
-    ctx.fillText("F", F.x - 4, F.y + 30);
+    ctx.fillStyle = inkSoft; ctx.font = "11px " + cssVar("--font-mono");
+    ctx.fillText("F", F.x - 4, F.y - 30);
 
-    // effort point + force arrow (on full-extension pose, most representative)
+    // pin markers at E and P (full-extension pose, most representative)
     ctx.fillStyle = accent;
     ctx.beginPath(); ctx.arc(full.E.x, full.E.y, 4, 0, Math.PI * 2); ctx.fill();
     ctx.fillText("E", full.E.x + 6, full.E.y - 6);
-    // perpendicular effort force arrow
-    const armAngle = Math.atan2(full.E.y - F.y, full.E.x - F.x);
-    const perp = armAngle - Math.PI / 2;
-    const aLen = 34;
-    const ax = full.E.x + Math.cos(perp) * aLen, ay = full.E.y + Math.sin(perp) * aLen;
-    drawArrow(full.E.x, full.E.y, ax, ay, accent, 2.2);
-    ctx.fillStyle = accent;
-    ctx.fillText("Fe", ax + 4, ay);
-
-    // load point
     ctx.fillStyle = ok;
     ctx.beginPath(); ctx.arc(full.P.x, full.P.y, 4, 0, Math.PI * 2); ctx.fill();
     ctx.fillText("P", full.P.x - 4, full.P.y - 10);
 
-    // linear bearing axis (horizontal from P to the right) + spring + slider block
-    const bearingY = full.P.y;
-    const bearingStartX = full.P.x;
-    const arcTravelPx = 18; // fixed small visual offset representing s_l already consumed getting here
-    const springZoneW = Math.min(140, W - bearingStartX - 60);
-    const bearingEndX = bearingStartX + Math.max(60, springZoneW);
-
-    ctx.strokeStyle = ok;
-    ctx.setLineDash([1, 4]);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(bearingStartX, bearingY); ctx.lineTo(bearingEndX, bearingY); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // slider block at P
-    ctx.fillStyle = ok;
-    ctx.fillRect(bearingStartX - 7, bearingY - 7, 14, 14);
-
-    // spring zigzag at the end
-    const coils = 6;
-    const springStart = bearingStartX + (bearingEndX - bearingStartX) * 0.35;
-    ctx.strokeStyle = inkSoft;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(springStart, bearingY);
-    const seg = (bearingEndX - springStart) / coils;
-    for (let i = 0; i < coils; i++) {
-      const x1 = springStart + seg * (i + 0.5);
-      ctx.lineTo(x1, bearingY + (i % 2 === 0 ? -9 : 9));
+    // slotted (Scotch-yoke) drop-links from each pin straight down/up to the common rail
+    function dropLink(pin, color) {
+      ctx.strokeStyle = color; ctx.setLineDash([1, 3]); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(pin.x, pin.y); ctx.lineTo(pin.x, railY); ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.lineTo(bearingEndX, bearingY);
-    ctx.stroke();
+    dropLink(full.E, accent);
+    dropLink(full.P, ok);
 
-    // wall at end
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bearingEndX, bearingY - 16); ctx.lineTo(bearingEndX, bearingY + 16); ctx.stroke();
-
-    ctx.fillStyle = inkFaint;
-    ctx.font = "10.5px " + cssVar("--font-mono");
-    ctx.fillText("linear bearing → spring", bearingStartX + 4, bearingY - 20);
-
-    // arm length labels
-    ctx.fillStyle = inkSoft;
-    ctx.font = "10.5px " + cssVar("--font-mono");
-    const midFE = { x: (F.x + full.E.x) / 2, y: (F.y + full.E.y) / 2 };
-    ctx.fillText("L₁", midFE.x - 14, midFE.y - 6);
-    const midEP = { x: (full.E.x + full.P.x) / 2, y: (full.E.y + full.P.y) / 2 };
-    ctx.fillText("L₂", midEP.x + 6, midEP.y - 6);
-
-    // beta arc label at E
+    // effort mass block (right side, on the rail) — sized to the actual mass
+    const meSide = massBoxSide(state.me);
     ctx.fillStyle = accent;
-    ctx.font = "10px " + cssVar("--font-mono");
-    ctx.fillText("β", full.E.x - 16, full.E.y + 14);
+    ctx.fillRect(full.E.x - meSide / 2, railY - meSide / 2, meSide, meSide);
+    ctx.fillStyle = cssVar("--accent-ink");
+    ctx.font = "9.5px " + cssVar("--font-mono"); ctx.textAlign = "center";
+    ctx.fillText("mₑ", full.E.x, railY + 3);
+    ctx.textAlign = "left";
+
+    // load mass block (left side, on the rail)
+    const mlSide = massBoxSide(state.ml);
+    ctx.fillStyle = ok;
+    ctx.fillRect(full.P.x - mlSide / 2, railY - mlSide / 2, mlSide, mlSide);
+    ctx.fillStyle = cssVar("--surface");
+    ctx.font = "9.5px " + cssVar("--font-mono"); ctx.textAlign = "center";
+    ctx.fillText("mₗ", full.P.x, railY + 3);
+    ctx.textAlign = "left";
+
+    // effort force arrow — horizontal, in line with the rail, pointing left (into the mechanism, from the right)
+    const arrowY = railY - meSide / 2 - 14;
+    const arrowStartX = full.E.x + 46;
+    drawArrow(arrowStartX, arrowY, full.E.x + meSide / 2 + 4, arrowY, accent, 2.2);
+    ctx.fillStyle = accent; ctx.font = "10.5px " + cssVar("--font-mono");
+    ctx.fillText("Fe →", arrowStartX + 2, arrowY - 6);
+
+    // arm length + beta labels
+    ctx.fillStyle = inkSoft; ctx.font = "10.5px " + cssVar("--font-mono");
+    const midFE = { x: (F.x + full.E.x) / 2, y: (F.y + full.E.y) / 2 };
+    ctx.fillText("L₁", midFE.x + 8, midFE.y - 4);
+    const midEP = { x: (full.E.x + full.P.x) / 2, y: (full.E.y + full.P.y) / 2 };
+    ctx.fillText("L₂", midEP.x - 16, midEP.y - 4);
+    ctx.fillStyle = accent; ctx.font = "10px " + cssVar("--font-mono");
+    ctx.fillText("β", full.E.x + 12, full.E.y + 14);
+
+    ctx.fillStyle = inkFaint; ctx.font = "10px " + cssVar("--font-mono");
+    ctx.fillText("linear rail", (railLeftX + railRightX) / 2 - 24, railY + 24);
   }
 
   function drawArrow(x1, y1, x2, y2, color, width) {

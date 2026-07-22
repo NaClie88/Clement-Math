@@ -6,19 +6,41 @@ down a linear bearing into a spring — including the return stroke, where the
 same spring sends both masses back to a home hard stop. Open `index.html` in
 any browser — no build step, no server, no external dependencies.
 
-Two pages, one physics engine:
+Three pages, one physics engine:
 
 - **`index.html`** — single-point calculator: one set of inputs, full
-  breakdown of the outputs, live schematic.
+  breakdown of the outputs, live schematic, plus per-parameter testing
+  bounds with a one-at-a-time sensitivity view.
 - **`optimizer.html`** — Design Space Explorer: Monte Carlo sweep over the
   same model. Lock the parameters you've already fixed, give the rest a
   range, weight the objectives that matter for your build, and get back a
-  ranked list plus a Pareto-front view of the trade-offs. Results save
-  locally (IndexedDB) and export to CSV or a real `.xlsx`.
+  ranked list plus a Pareto-front view of the trade-offs. Tag results by
+  which effort-force ranges they hold up across. Results save locally
+  (IndexedDB) and export to CSV or a real `.xlsx`.
+- **`settings.html`** — one shared unit-preference set for every quantity
+  (length, force, mass, velocity, angle, spring rate, energy, moment of
+  inertia), applied instantly across both tools, plus a live self-test of
+  the conversion math itself.
 
-Both load `physics.js` (same formulas, one source of truth) and
+All three load `physics.js` (same formulas, one source of truth),
+`../shared/units.js` (unit conversion, one source of truth), and
 `../shared/theme.css` (shared visual language across calculators in this
 repo).
+
+## Units are fully configurable, not just US/Metric
+
+Open **Settings** (the ⚙ Units link in either tool's header) to pick a unit
+independently for each quantity — mix and match freely (e.g. millimeters
+with pounds-force). Preferences are stored in the browser (`localStorage`)
+and apply immediately to both `index.html` and `optimizer.html`.
+
+Every composite unit (lbf, slug, lbf/in, in·lbf, lbm·in², ...) is *derived at
+runtime* from three internationally-defined exact constants — 1 in = 0.0254 m,
+1 lb = 0.45359237 kg, standard gravity = 9.80665 m/s² — never a second,
+independently hand-typed decimal that could quietly drift from the others.
+Settings' self-test panel round-trips every supported unit and independently
+cross-checks the physics (F=ma, the literal definition of a slug) live in the
+browser, so the conversion table's correctness is shown, not just asserted.
 
 ## What it's for
 
@@ -133,6 +155,45 @@ reliably. `α_effort` and `α_load` let you dial in exactly how much residual
 return velocity that reliability margin costs. A lever inertia of zero
 combined with any nonzero offset is flagged as undefined (0/0) rather than
 silently shown as infinite.
+
+## Max lever rotation (angle constraint)
+
+Card 01 includes a **max lever rotation** field — the actual angular room
+your hard stop and full-extension stop leave available, a real mechanical
+ceiling rather than the model's generic 150° sanity threshold. `physics.js`
+flags any design that needs more rotation than that as infeasible, and the
+optimizer's own "Max lever rotation" constraint is the same field, so a
+sweep and a single-point check agree on what's achievable. Set it in degrees
+or radians — whichever you picked for angle units in Settings.
+
+## Diagram layout
+
+The schematic draws the effort mass on a slider arriving from the **right**
+and the load mass + spring + linear rail on the **left**, both riding one
+common horizontal axis — so the effort force is always drawn in line with
+the axis the spring acts along, matching a straight-through packaging
+layout. The fulcrum sits above, with the bent lever's two arms dropping to
+each slider through a dashed link (representing the Scotch-yoke slot
+coupling). Both masses are drawn as labeled blocks sized to their actual
+value, so a heavier effort or load mass visibly reads as a bigger block.
+
+One geometric note: perfectly aligning *both* sliders to one truly common,
+single straight rail while also holding both dead-center offsets (α_e, α_l)
+at exactly 0° simultaneously is only exact for a straight lever (β=180°) —
+for a genuinely bent lever there's a small minimum combined offset baked in
+by β. The diagram is the packaging concept; confirm the exact dead-center
+geometry for your specific rail arrangement in CAD.
+
+## Testing bounds & sensitivity (`index.html`)
+
+Card 05 lets you fill in a lower/upper bound for any input you're still
+unsure of. For each one with a bound set, the panel below re-runs the
+physics with just that parameter swapped to its bound value — everything
+else held at its primary value — and shows the resulting range for load
+force, effort travel, max load travel, and load return velocity. This is a
+one-at-a-time ("tornado") sensitivity check: which uncertain input actually
+moves the result, not a worst-case combination of all of them together. For
+that, use the full Monte Carlo sweep in `optimizer.html`.
 
 ## Assumptions & limitations
 

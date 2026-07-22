@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Unit Settings — Clement-Math Calculators</title>
+<link rel="stylesheet" href="../shared/theme.css" />
+<style>
+  .unit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .unit-field { display: flex; flex-direction: column; gap: 6px; }
+  .unit-field label {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .unit-field select {
+    font-family: var(--font-mono); font-size: 14px; padding: 9px 10px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink);
+  }
+  .preset-row { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  table.selftest { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.selftest th {
+    text-align: left; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-faint); padding: 6px 8px; border-bottom: 1px solid var(--line-strong);
+  }
+  table.selftest td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.selftest td.detail { font-family: var(--font-mono); color: var(--ink-soft); font-size: 11.5px; }
+  .badge { font-family: var(--font-mono); font-size: 10.5px; padding: 3px 8px; border-radius: 100px; font-weight: 700; }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.fail { background: var(--danger-soft); color: var(--danger); }
+  .selftest-summary { font-family: var(--font-mono); font-size: 14px; padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; }
+  .selftest-summary.ok { background: var(--ok-soft); color: var(--ok); }
+  .selftest-summary.fail { background: var(--danger-soft); color: var(--danger); }
+  .constants-row { display: flex; flex-wrap: wrap; gap: 18px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  .constants-row strong { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title-block">
+      <div class="eyebrow">Mechanism Design Instrument</div>
+      <h1>Unit Settings</h1>
+      <p class="sub">One unit preference set shared by every calculator on this site — pick length, force, mass, velocity, angle, spring rate, energy, and inertia units independently, in any combination. Applies immediately to <a class="backlink" href="index.html">the calculator</a> and <a class="backlink" href="optimizer.html">the optimizer</a>.</p>
+    </div>
+    <div class="top-controls">
+      <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
+    </div>
+  </header>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h2><span class="n">01</span> Quick presets</h2>
+    <div class="preset-row">
+      <button class="ghost-btn run-btn" id="presetUS" type="button" style="background:var(--accent); color:var(--accent-ink); border:none;">US Customary</button>
+      <button class="ghost-btn" id="presetSI" type="button">Metric (SI)</button>
+    </div>
+    <p class="note">Presets set every field at once — every field below can still be changed individually afterward. That's the point: this isn't locked to two bundles, mix and match freely (e.g. millimeters with pounds-force).</p>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h2><span class="n">02</span> Units by quantity</h2>
+    <div class="unit-grid" id="unitGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">✓</span> Unit Conversion Self-Test</h2>
+    <p class="note" style="margin-top:-4px;">Every composite unit (lbf, slug, lbf/in, in·lbf, lbm·in², ...) is derived at runtime from three internationally-defined exact constants — inch, pound-mass, and standard gravity — never a separately hand-typed decimal. This panel round-trips every supported unit and independently cross-checks the physics (F=ma, the definition of a slug) so the conversion table's correctness isn't just asserted, it's shown.</p>
+    <div class="constants-row" id="constantsRow" style="margin: 10px 0 16px;"></div>
+    <button class="run-btn" id="runSelfTest" type="button" style="margin-bottom:14px;">▶ Run self-test</button>
+    <div id="selftestResults"></div>
+  </div>
+
+</div>
+<script src="../shared/units.js"></script>
+<script src="../shared/unit-prefs.js"></script>
+<script>
+(function () {
+  "use strict";
+  const KIND_LABELS = {
+    length: "Length", force: "Force", mass: "Mass", velocity: "Velocity",
+    angle: "Angle", rate: "Spring rate (force / length)", energy: "Energy", inertia: "Moment of inertia"
+  };
+
+  let prefs = SharedUnitPrefs.load();
+
+  function renderGrid() {
+    const grid = document.getElementById("unitGrid");
+    grid.innerHTML = "";
+    Object.keys(SharedUnits.KINDS).forEach(kind => {
+      const field = document.createElement("div");
+      field.className = "unit-field";
+      const options = SharedUnits.KINDS[kind].map(u =>
+        `<option value="${u}" ${prefs[kind] === u ? "selected" : ""}>${SharedUnits.label(kind, u)}</option>`
+      ).join("");
+      field.innerHTML = `<label>${KIND_LABELS[kind] || kind}</label><select data-kind="${kind}">${options}</select>`;
+      field.querySelector("select").addEventListener("change", e => {
+        prefs[e.target.dataset.kind] = e.target.value;
+        SharedUnitPrefs.save(prefs);
+      });
+      grid.appendChild(field);
+    });
+  }
+
+  document.getElementById("presetUS").addEventListener("click", () => {
+    prefs = Object.assign({}, SharedUnitPrefs.DEFAULTS_US);
+    SharedUnitPrefs.save(prefs);
+    renderGrid();
+  });
+  document.getElementById("presetSI").addEventListener("click", () => {
+    prefs = Object.assign({}, SharedUnitPrefs.DEFAULTS_SI);
+    SharedUnitPrefs.save(prefs);
+    renderGrid();
+  });
+
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute("data-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", !cur ? (prefersDark ? "light" : "dark") : (cur === "dark" ? "light" : "dark"));
+  });
+
+  const c = SharedUnits._constants;
+  document.getElementById("constantsRow").innerHTML = `
+    <span><strong>1 in</strong> = ${c.IN} m</span>
+    <span><strong>1 lb</strong> = ${c.LB} kg</span>
+    <span><strong>g₀</strong> = ${c.G0} m/s²</span>
+    <span><strong>1 lbf</strong> = ${c.LBF.toFixed(10)} N <em>(derived: 1 lb × g₀)</em></span>
+    <span><strong>1 slug</strong> = ${c.SLUG.toFixed(10)} kg <em>(derived: 1 lbf ÷ 1 ft/s²)</em></span>
+  `;
+
+  document.getElementById("runSelfTest").addEventListener("click", () => {
+    const { pass, results } = SharedUnits.selfTest();
+    const summary = document.createElement("div");
+    summary.className = "selftest-summary " + (pass ? "ok" : "fail");
+    const failCount = results.filter(r => !r.ok).length;
+    summary.textContent = pass
+      ? `All ${results.length} checks passed — round-trips and independent physics cross-checks both agree.`
+      : `${failCount} of ${results.length} checks FAILED — do not trust conversions until this is fixed.`;
+
+    const table = document.createElement("table");
+    table.className = "selftest";
+    table.innerHTML = `<thead><tr><th>Check</th><th>Detail</th><th>Result</th></tr></thead><tbody>${
+      results.map(r => `<tr><td>${escapeHtml(r.name)}</td><td class="detail">${escapeHtml(r.detail)}</td><td><span class="badge ${r.ok ? "ok" : "fail"}">${r.ok ? "PASS" : "FAIL"}</span></td></tr>`).join("")
+    }</tbody>`;
+
+    const container = document.getElementById("selftestResults");
+    container.innerHTML = "";
+    container.appendChild(summary);
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+  });
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  renderGrid();
+})();
+</script>
+</body>
+</html>

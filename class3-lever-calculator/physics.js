@@ -4,83 +4,39 @@
  * https:// — used by both index.html (single-point calculator) and
  * optimizer.html (parameter sweep / optimizer). Keeping the formulas in one
  * place means the two tools can never drift out of sync with each other.
+ *
+ * Requires shared/units.js to be loaded first — all unit conversion is
+ * delegated there (single source of truth; see units.js's own header for
+ * why that matters). This file's own contract stays unit-fixed internally:
+ * every input/output here is SI (m, N, kg, s) except the angle fields
+ * (beta, alphaEffort, alphaLoad, maxDTheta), which are plain degrees for
+ * readability at the call site — pages convert to/from the user's chosen
+ * angle unit (degrees or radians) before/after calling in here.
  */
 (function (global) {
   "use strict";
 
-  // ---------- unit conversion constants ----------
-  const IN_TO_M = 0.0254;
-  const LBF_TO_N = 4.4482216153;
-  const LBM_TO_KG = 0.45359237;
+  if (!global.SharedUnits) {
+    throw new Error("physics.js requires shared/units.js to be loaded first.");
+  }
+  const SU = global.SharedUnits;
+
   const DEG_TO_RAD = Math.PI / 180;
-  const G = 9.80665;
-  const INERTIA_US_TO_SI = LBM_TO_KG * IN_TO_M * IN_TO_M; // lbm·in² -> kg·m²
-
-  const UNITS = {
-    us: { length: "in", force: "lbf", mass: "lb", velocity: "in/s", rate: "lbf/in", time: "s", inertia: "lbm·in²" },
-    si: { length: "mm", force: "N", mass: "kg", velocity: "m/s", rate: "N/mm", time: "s", inertia: "kg·m²" }
-  };
-
-  function toSI(kind, v, sys) {
-    if (v === "" || v === null || v === undefined || isNaN(v)) return 0;
-    v = parseFloat(v);
-    if (sys === "us") {
-      switch (kind) {
-        case "length": return v * IN_TO_M;
-        case "force": return v * LBF_TO_N;
-        case "mass": return v * LBM_TO_KG;
-        case "velocity": return v * IN_TO_M;
-        case "rate": return v * LBF_TO_N / IN_TO_M;
-        case "inertia": return v * INERTIA_US_TO_SI;
-      }
-    } else {
-      switch (kind) {
-        case "length": return v / 1000;
-        case "force": return v;
-        case "mass": return v;
-        case "velocity": return v;
-        case "rate": return v * 1000;
-        case "inertia": return v;
-      }
-    }
-    return v;
-  }
-
-  function fromSI(kind, v, sys) {
-    if (sys === "us") {
-      switch (kind) {
-        case "length": return v / IN_TO_M;
-        case "force": return v / LBF_TO_N;
-        case "mass": return v / LBM_TO_KG;
-        case "velocity": return v / IN_TO_M;
-        case "rate": return v * IN_TO_M / LBF_TO_N;
-        case "inertia": return v / INERTIA_US_TO_SI;
-      }
-    } else {
-      switch (kind) {
-        case "length": return v * 1000;
-        case "force": return v;
-        case "mass": return v;
-        case "velocity": return v;
-        case "rate": return v / 1000;
-        case "inertia": return v;
-      }
-    }
-    return v;
-  }
+  const G = SU._constants.G0; // standard gravity — same single constant units.js derives everything else from
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
   /**
    * Pure function: all inputs and outputs in SI (m, N, kg, rad, s) except
-   * betaDeg/alphaEffortDeg/alphaLoadDeg which are degrees for readability at
-   * the call site. No DOM, no globals — safe to call thousands of times in
-   * a sweep.
+   * betaDeg/alphaEffortDeg/alphaLoadDeg/maxDThetaDeg which are degrees for
+   * readability at the call site. No DOM, no globals — safe to call
+   * thousands of times in a sweep.
    */
   function computeAll(input) {
     const {
       L1, L2, beta: betaDeg, Fe, me, ve, ml, k, xBudget, eta, springMode,
-      alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever
+      alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever,
+      maxDThetaDeg = 150
     } = input;
 
     const beta = betaDeg * DEG_TO_RAD;
@@ -135,7 +91,7 @@
     if (L1 <= 0 || L2 <= 0) warnings.push("Arm length must be positive.");
     if (!(betaDeg > 0 && betaDeg <= 180)) warnings.push("Bend angle must be between 0° and 180°.");
     if (isFinite(MA) && MA >= 1) warnings.push("L₁/R ≥ 1 — this is no longer force-reducing like a typical class-3 ratio. Check L₁, L₂, β.");
-    if (dThetaDeg > 150) warnings.push("Required rotation exceeds 150° — verify this is mechanically achievable.");
+    if (dThetaDeg > maxDThetaDeg) warnings.push(`Required rotation (${dThetaDeg.toFixed(1)}°) exceeds your max lever rotation constraint (${maxDThetaDeg}°).`);
     if (R < 1e-6) warnings.push("Arm segments collapse onto each other at this bend angle — increase β.");
 
     const returnWarnings = [];
@@ -152,15 +108,12 @@
 
     return {
       R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
-      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings,
+      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings, maxDThetaDeg,
       Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings,
       feasible,
       geom: { L1, L2, beta, alphaEffort, alphaLoad }
     };
   }
 
-  global.LeverPhysics = {
-    IN_TO_M, LBF_TO_N, LBM_TO_KG, DEG_TO_RAD, G, INERTIA_US_TO_SI,
-    UNITS, toSI, fromSI, clamp, computeAll
-  };
+  global.LeverPhysics = { DEG_TO_RAD, G, clamp, computeAll };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -13,14 +13,31 @@ documenting its formulas and assumptions.
 - [`class3-lever-calculator/`](class3-lever-calculator/) — bent class-3
   lever impact-to-spring shock absorber: force/travel/energy sizing for the
   power stroke, plus a dead-center return-stroke analysis to minimize
-  home-stop impact. Also includes `optimizer.html`, a Monte Carlo
-  parameter-sweep / design-space explorer over the same model.
+  home-stop impact. Also includes `optimizer.html` (a Monte Carlo
+  parameter-sweep / design-space explorer over the same model) and
+  `settings.html` (unit preferences shared by both, with a live
+  self-verifying conversion test).
 
 `shared/` holds cross-calculator utilities so future calculators don't
-reinvent them: `theme.css` (the visual language), `physics.js`-style pattern
-for pure computation modules, `prng.js` (seeded RNG), `spreadsheet-export.js`
-(CSV + dependency-free real `.xlsx` export), `idb-store.js` (tiny IndexedDB
-wrapper for persistent, offline-capable storage).
+reinvent them:
+
+- `theme.css` — the visual language (tokens, cards, buttons, tables, chips).
+- `units.js` — unit conversion, the *only* place any conversion factor is
+  defined. Every composite unit is derived at runtime from three exact
+  constants (inch, pound-mass, standard gravity), never a second hand-typed
+  decimal, and it ships a `selfTest()` that round-trips every unit and
+  independently cross-checks the physics — see any calculator's Settings
+  page to run it live.
+- `unit-prefs.js` — reads/writes the shared per-quantity unit choices
+  (`localStorage`), so picking units once in Settings applies everywhere.
+- `prng.js` — seeded `mulberry32` RNG for reproducible Monte Carlo sampling.
+- `spreadsheet-export.js` — CSV + a dependency-free real `.xlsx` writer
+  (hand-rolled zip/OOXML, no library, works fully offline).
+- `idb-store.js` — tiny IndexedDB wrapper for persistent, offline-capable
+  storage.
+
+A future calculator that needs units, export, or persistence should reuse
+these rather than re-implementing them.
 
 ## GitHub Pages
 
