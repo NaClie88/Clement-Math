@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bent Class-3 Lever — Shock Absorber Calculator</title>
+<style>
+  :root {
+    --bg: #e7eaec;
+    --bg-grid: #d9dee1;
+    --surface: #f5f6f7;
+    --surface-2: #dfe3e5;
+    --ink: #182024;
+    --ink-soft: #55626b;
+    --ink-faint: #7c8790;
+    --line: #c7cdd1;
+    --line-strong: #a9b1b6;
+    --accent: #a8551f;
+    --accent-ink: #fff8f2;
+    --accent-soft: #a8551f1a;
+    --ok: #2f6f47;
+    --ok-soft: #2f6f4718;
+    --danger: #a8331f;
+    --danger-soft: #a8331f18;
+    --focus: #2b6cb0;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Consolas", "Liberation Mono", monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151a;
+    --bg-grid: #161d23;
+    --surface: #1a2129;
+    --surface-2: #212a33;
+    --ink: #e8edf0;
+    --ink-soft: #9aabb5;
+    --ink-faint: #6c7c86;
+    --line: #2c3844;
+    --line-strong: #3d4b58;
+    --accent: #e08a48;
+    --accent-ink: #1a1006;
+    --accent-soft: #e08a4826;
+    --ok: #5cb47f;
+    --ok-soft: #5cb47f22;
+    --danger: #e2685a;
+    --danger-soft: #e2685a22;
+    --focus: #6ba9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10151a;
+      --bg-grid: #161d23;
+      --surface: #1a2129;
+      --surface-2: #212a33;
+      --ink: #e8edf0;
+      --ink-soft: #9aabb5;
+      --ink-faint: #6c7c86;
+      --line: #2c3844;
+      --line-strong: #3d4b58;
+      --accent: #e08a48;
+      --accent-ink: #1a1006;
+      --accent-soft: #e08a4826;
+      --ok: #5cb47f;
+      --ok-soft: #5cb47f22;
+      --danger: #e2685a;
+      --danger-soft: #e2685a22;
+      --focus: #6ba9e0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  ::selection { background: var(--accent-soft); }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 22px 60px; }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    align-items: flex-end; justify-content: space-between;
+    padding-bottom: 18px; margin-bottom: 22px;
+    border-bottom: 2px solid var(--line-strong);
+  }
+  .title-block .eyebrow {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1 {
+    font-family: var(--font-mono); font-weight: 700;
+    font-size: clamp(20px, 2.6vw, 28px);
+    letter-spacing: 0.01em; margin: 4px 0 6px; text-wrap: balance;
+    color: var(--ink);
+  }
+  .title-block p.sub {
+    margin: 0; color: var(--ink-soft); font-size: 13.5px; max-width: 60ch;
+  }
+  .top-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .segmented {
+    display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px;
+    overflow: hidden; font-family: var(--font-mono); font-size: 12.5px;
+    background: var(--surface);
+  }
+  .segmented button {
+    border: none; background: transparent; color: var(--ink-soft);
+    padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: inherit;
+    letter-spacing: 0.03em;
+  }
+  .segmented button.active { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .segmented button:not(.active):hover { background: var(--surface-2); color: var(--ink); }
+  .segmented button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+  .theme-btn {
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft);
+    border-radius: 7px; padding: 8px 12px; font-family: var(--font-mono); font-size: 12.5px;
+    cursor: pointer; letter-spacing: 0.03em;
+  }
+  .theme-btn:hover { color: var(--ink); }
+  .theme-btn:focus-visible { outline: 2px solid var(--focus); }
+
+  /* ---------- layout ---------- */
+  .layout { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+
+  .col { display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 16px 18px;
+  }
+  .card > h2 {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card > h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .card > h2 .n { color: var(--accent); }
+
+  .field-row { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; margin-bottom: 12px; }
+  .field-row:last-child { margin-bottom: 0; }
+  .field-row label {
+    font-size: 13px; color: var(--ink); display: flex; flex-direction: column; gap: 2px;
+  }
+  .field-row label .hint { font-size: 11.2px; color: var(--ink-faint); font-weight: 400; }
+  .field-row .input-unit {
+    display: flex; align-items: center; gap: 6px;
+  }
+  input[type="number"], input[type="range"] { font-family: var(--font-mono); }
+  input[type="number"] {
+    width: 104px; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--line-strong);
+    background: var(--surface-2); color: var(--ink); font-size: 13.5px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="number"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .unit-tag {
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); min-width: 34px;
+  }
+  input[type="range"] {
+    width: 100%; accent-color: var(--accent); height: 4px;
+  }
+  .angle-row { grid-template-columns: 1fr; }
+  .angle-row .slider-line { display: flex; align-items: center; gap: 10px; }
+  .angle-row .slider-line input[type="number"] { width: 68px; }
+
+  .radio-toggle { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+  .radio-toggle label {
+    display: flex; gap: 8px; align-items: flex-start; font-size: 12.8px; color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .radio-toggle input { margin-top: 3px; accent-color: var(--accent); }
+  .radio-toggle strong { color: var(--ink); }
+
+  details.advanced { margin-top: 2px; }
+  details.advanced > summary {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-faint); cursor: pointer; list-style: none;
+    display: flex; align-items: center; gap: 6px; padding: 4px 0;
+  }
+  details.advanced > summary::-webkit-details-marker { display: none; }
+  details.advanced > summary::before { content: "▸"; color: var(--accent); font-size: 10px; }
+  details.advanced[open] > summary::before { content: "▾"; }
+  details.advanced .field-row { margin-top: 12px; }
+
+  /* ---------- diagram ---------- */
+  .diagram-card { padding: 0; overflow: hidden; }
+  .diagram-card h2 { margin: 16px 16px 10px; }
+  canvas#lever { width: 100%; height: 340px; display: block; background: var(--surface-2); }
+  .diagram-legend {
+    display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 16px 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);
+  }
+  .diagram-legend .item { display: flex; align-items: center; gap: 6px; }
+  .diagram-legend .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- status chips ---------- */
+  .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+    padding: 5px 10px; border-radius: 100px; border: 1px solid transparent;
+  }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .chip.warn { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+  /* ---------- output stat grid ---------- */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .stat {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat .label { font-size: 11px; color: var(--ink-faint); letter-spacing: 0.02em; }
+  .stat .value {
+    font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .stat .value .unit { font-size: 12px; font-weight: 500; color: var(--ink-soft); margin-left: 3px; }
+  .stat.accent .value { color: var(--accent); }
+
+  table.spec {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  table.spec th {
+    text-align: left; font-family: var(--font-mono); font-size: 10.8px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    padding: 6px 10px; border-bottom: 1px solid var(--line-strong);
+  }
+  table.spec td {
+    padding: 8px 10px; border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  table.spec td.val { font-family: var(--font-mono); text-align: right; color: var(--ink); font-weight: 600; }
+  table.spec td.unit { font-family: var(--font-mono); color: var(--ink-faint); width: 46px; }
+  table.spec tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+
+  .note {
+    font-size: 12.2px; color: var(--ink-soft); margin-top: 12px; line-height: 1.55;
+  }
+  .note code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+
+  footer.methodology {
+    margin-top: 22px; border-top: 2px solid var(--line-strong); padding-top: 16px;
+  }
+  footer.methodology h2 {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 12px;
+  }
+  footer.methodology .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;
+  }
+  footer.methodology h3 {
+    font-size: 13px; margin: 0 0 6px; color: var(--ink);
+  }
+  footer.methodology p, footer.methodology li { font-size: 12.6px; color: var(--ink-soft); margin: 4px 0; }
+  footer.methodology ul { margin: 6px 0; padding-left: 18px; }
+  footer.methodology .formula {
+    font-family: var(--font-mono); font-size: 12px; background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0;
+    color: var(--ink); overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title-block">
+      <div class="eyebrow">Mechanism Design Instrument</div>
+      <h1>Bent Class-3 Lever — Impact-to-Spring Shock Absorber</h1>
+      <p class="sub">Solves the force, travel, and energy relationships for a class-3 lever with a bend at the effort point, driving a load mass down a linear bearing into a spring. Enter your geometry and impact conditions to get testable bench values.</p>
+    </div>
+    <div class="top-controls">
+      <div class="segmented" id="unitToggle" role="group" aria-label="Unit system">
+        <button data-unit="us" class="active">US CUSTOMARY</button>
+        <button data-unit="si">METRIC</button>
+      </div>
+      <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ INPUT COLUMN ============ -->
+    <div class="col" id="inputCol">
+
+      <div class="card">
+        <h2><span class="n">01</span> Geometry &amp; Layout</h2>
+        <div class="field-row">
+          <label>Fulcrum → Effort length (L₁)<span class="hint">pivot to effort-force application point</span></label>
+          <div class="input-unit">
+            <input type="number" id="L1" step="0.01" />
+            <span class="unit-tag" data-u="length"></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Effort → Load length (L₂)<span class="hint">effort point to load-force application point</span></label>
+          <div class="input-unit">
+            <input type="number" id="L2" step="0.01" />
+            <span class="unit-tag" data-u="length"></span>
+          </div>
+        </div>
+        <div class="field-row angle-row">
+          <label>Bend angle at effort point (β)<span class="hint">interior angle between the two arm segments — 180° is a straight lever</span></label>
+          <div class="slider-line">
+            <input type="range" id="betaRange" min="20" max="180" step="1" />
+            <input type="number" id="beta" min="20" max="180" step="1" />
+            <span class="unit-tag">deg</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">02</span> Effort Side (Impact In)</h2>
+        <div class="field-row">
+          <label>Design effort force (F<sub>e</sub>)<span class="hint">max force the structure is rated to see at the effort point</span></label>
+          <div class="input-unit">
+            <input type="number" id="Fe" step="0.1" />
+            <span class="unit-tag" data-u="force"></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Effort mass (m<sub>e</sub>)<span class="hint">moving mass delivering the impact</span></label>
+          <div class="input-unit">
+            <input type="number" id="me" step="0.01" />
+            <span class="unit-tag" data-u="mass"></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Effort mass incoming velocity (v<sub>e</sub>)<span class="hint">speed at first contact with the effort point</span></label>
+          <div class="input-unit">
+            <input type="number" id="ve" step="0.1" />
+            <span class="unit-tag" data-u="velocity"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">03</span> Load Side &amp; Spring</h2>
+        <div class="field-row">
+          <label>Load mass (m<sub>l</sub>)<span class="hint">mass carried down the linear bearing into the spring</span></label>
+          <div class="input-unit">
+            <input type="number" id="ml" step="0.01" />
+            <span class="unit-tag" data-u="mass"></span>
+          </div>
+        </div>
+
+        <div class="radio-toggle" id="springModeToggle">
+          <label><input type="radio" name="springMode" value="givenK" checked> <span><strong>I have a candidate spring rate</strong> — solve required travel</span></label>
+          <label><input type="radio" name="springMode" value="givenX"> <span><strong>I have a stroke budget</strong> — solve required spring rate</span></label>
+        </div>
+
+        <div class="field-row" id="rowK">
+          <label>Spring rate (k)<span class="hint">from catalog / candidate spring</span></label>
+          <div class="input-unit">
+            <input type="number" id="k" step="0.1" />
+            <span class="unit-tag" data-u="rate"></span>
+          </div>
+        </div>
+        <div class="field-row" id="rowX" style="display:none;">
+          <label>Available spring travel<span class="hint">packaging limit for the spring stroke</span></label>
+          <div class="input-unit">
+            <input type="number" id="xBudget" step="0.01" />
+            <span class="unit-tag" data-u="length"></span>
+          </div>
+        </div>
+
+        <details class="advanced">
+          <summary>Advanced — mechanism efficiency</summary>
+          <div class="field-row">
+            <label>Efficiency (η)<span class="hint">lumps pivot friction, lever inertia, bearing drag. 1.0 = lossless</span></label>
+            <div class="input-unit">
+              <input type="number" id="eta" step="1" min="10" max="100" />
+              <span class="unit-tag">%</span>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">04</span> Return Stroke — Home-Stop Alignment</h2>
+        <p class="note" style="margin-top:-4px;">Assumes both masses ride their own linear bearing, pinned to the lever via a slotted (Scotch-yoke) coupling. Mounting a bearing axis parallel to its arm <em>at the home hard stop</em> drives that mass's return velocity to zero right at contact — see Methodology below.</p>
+        <div class="field-row">
+          <label>Effort-axis offset from dead center (α<sub>e</sub>)<span class="hint">0° = effort bearing exactly aligned with L₁ at the hard stop</span></label>
+          <div class="input-unit">
+            <input type="number" id="alphaEffort" step="0.5" min="0" max="45" />
+            <span class="unit-tag">deg</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Load-axis offset from dead center (α<sub>l</sub>)<span class="hint">0° = load bearing exactly aligned with R at the hard stop</span></label>
+          <div class="input-unit">
+            <input type="number" id="alphaLoad" step="0.5" min="0" max="45" />
+            <span class="unit-tag">deg</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label>Lever moment of inertia about F (I<sub>lever</sub>)<span class="hint">what's left spinning at contact once both masses are dead-centered</span></label>
+          <div class="input-unit">
+            <input type="number" id="ILever" step="0.01" />
+            <span class="unit-tag" data-u="inertia"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ OUTPUT COLUMN ============ -->
+    <div class="col">
+
+      <div class="card diagram-card">
+        <h2 style="margin:16px 16px 0;"><span class="n">◆</span> Schematic (to scale, live)</h2>
+        <canvas id="lever" width="900" height="340"></canvas>
+        <div class="diagram-legend">
+          <span class="item"><span class="swatch" style="background:var(--ink-faint); border-top:2px dashed var(--ink-faint); height:0;"></span> ready / hard stop</span>
+          <span class="item"><span class="swatch" style="background:var(--ink);"></span> full extension</span>
+          <span class="item"><span class="swatch" style="background:var(--accent);"></span> effort force</span>
+          <span class="item"><span class="swatch" style="background:var(--ok);"></span> linear bearing + spring</span>
+          <span class="item"><span class="swatch" style="background:var(--ink-faint); border-top:1px dotted var(--ink-faint); height:0;"></span> dead-center reference</span>
+          <span class="item"><span class="swatch" style="background:var(--accent); border-top:2px dashed var(--accent); height:0;"></span> mounted axis offset (α)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">→</span> Status</h2>
+        <div class="status-row" id="statusRow"></div>
+
+        <div class="stat-grid">
+          <div class="stat accent">
+            <div class="label">Load force (F<sub>l</sub>)</div>
+            <div class="value" id="out_Fl">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Mechanical advantage (L₁/R)</div>
+            <div class="value" id="out_MA">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Effective load arm (R)</div>
+            <div class="value" id="out_R">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Fulcrum layout angle (γ)</div>
+            <div class="value" id="out_gamma">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">→</span> Motion &amp; Energy</h2>
+        <div class="stat-grid">
+          <div class="stat accent">
+            <div class="label">Min. effort-side travel (s<sub>e</sub>)</div>
+            <div class="value" id="out_se">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Required lever rotation (Δθ)</div>
+            <div class="value" id="out_dtheta">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Load-side arc travel (s<sub>l,arc</sub>)</div>
+            <div class="value" id="out_sl">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Load handoff velocity (v<sub>l</sub>)</div>
+            <div class="value" id="out_vl">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Effort impact duration</div>
+            <div class="value" id="out_te">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Load arc-phase duration (est.)</div>
+            <div class="value" id="out_tl">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">→</span> Spring Sizing</h2>
+        <div class="stat-grid">
+          <div class="stat accent">
+            <div class="label" id="lbl_xmax">Max. load-mass travel (x<sub>max</sub>)</div>
+            <div class="value" id="out_xmax">—</div>
+          </div>
+          <div class="stat">
+            <div class="label" id="lbl_k">Required spring rate</div>
+            <div class="value" id="out_kreq">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Peak spring force</div>
+            <div class="value" id="out_Fspring">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Time to max compression</div>
+            <div class="value" id="out_tspring">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">→</span> Return Stroke — Home-Stop Impact</h2>
+        <div class="status-row" id="returnStatusRow"></div>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Round-trip return energy (η²·KE<sub>in</sub>)</div>
+            <div class="value" id="out_Ereturn">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Effective inertia at contact</div>
+            <div class="value" id="out_Ieff">—</div>
+          </div>
+          <div class="stat accent">
+            <div class="label">Lever spin at home contact (ω)</div>
+            <div class="value" id="out_omega">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">— equivalent</div>
+            <div class="value" id="out_omegaRpm">—</div>
+          </div>
+          <div class="stat accent">
+            <div class="label">Effort mass return velocity</div>
+            <div class="value" id="out_veHome">—</div>
+          </div>
+          <div class="stat accent">
+            <div class="label">Load mass return velocity</div>
+            <div class="value" id="out_vlHome">—</div>
+          </div>
+        </div>
+        <p class="note">Both offsets at 0° concentrates all return energy into lever spin, so the load and effort masses themselves arrive at the hard stop with no velocity — only the (ideally light) lever needs arresting. A small nonzero offset is often deliberate, to guarantee the forward stroke reliably breaks away from dead center; this panel shows what that costs you.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">✓</span> Testable Values Summary</h2>
+        <div class="table-wrap">
+          <table class="spec" id="summaryTable">
+            <thead><tr><th>Parameter</th><th>Value</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note">Values assume constant effort force through the effort-side stroke and idealized perpendicular force application on both arms. Treat the spring-phase numbers as the primary spec target; verify effort-side timing against your actual impact force profile.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="methodology">
+    <h2>Methodology &amp; Assumptions</h2>
+    <div class="grid">
+      <div>
+        <h3>Bent-lever geometry</h3>
+        <p>The lever is a rigid body: fulcrum F, effort point E, load point P, with |FE|=L₁, |EP|=L₂, and interior bend angle β at E. Because the body is rigid, the fulcrum-to-load distance R is fixed regardless of rotation (law of cosines):</p>
+        <div class="formula">R = √( L₁² + L₂² − 2·L₁·L₂·cos β )</div>
+        <p>A straight lever is the limiting case β = 180°, where R = L₁ + L₂. Bending the arm at E shortens R relative to a straight lever of the same segment lengths — this is the effect you're compensating for by measuring L₂ from the effort point rather than assuming L₁+L₂ is the load arm.</p>
+      </div>
+      <div>
+        <h3>Static force ratio</h3>
+        <p>Torque balance about the fulcrum, assuming both forces act perpendicular to their respective arms (idealized, worst-case-for-force / best-case-for-motion assumption typical of lever hand calcs):</p>
+        <div class="formula">F_load = F_effort · (L₁ / R)</div>
+        <p>Class-3 behavior (L₁ &lt; R) trades force for speed: the load point moves farther and faster than the effort point for the same rotation, which is what lets a small, fast effort-mass impact drive a heavier load mass into the spring.</p>
+      </div>
+      <div>
+        <h3>Effort-side stroke (work-energy)</h3>
+        <p>Given an incoming effort mass and velocity, the kinetic energy that must be absorbed while holding the effort force at its design value sets the minimum effort-side travel:</p>
+        <div class="formula">KE_in = ½·m_e·v_e²
+s_e(min) = KE_in / F_effort
+Δθ = s_e / L₁ &nbsp; (rotation from hard stop to full extension)</div>
+        <p>Raising the allowable design force F_effort is the only way to shrink s_e for a given impact energy — this is the direct answer to "how little can the effort mass move."</p>
+      </div>
+      <div>
+        <h3>Load handoff &amp; spring sizing</h3>
+        <p>An efficiency factor η lumps pivot friction, lever inertia, and bearing drag. Energy reaching the load mass at the moment the lever hits full extension:</p>
+        <div class="formula">v_l = √( 2·η·KE_in / m_l )</div>
+        <p>From there the load mass is treated as a free mass entering a linear spring (simple harmonic energy balance), giving the spring stroke you need to spec:</p>
+        <div class="formula">x_max = v_l · √(m_l / k)
+F_spring,max = k · x_max
+t_spring = (π/2)·√(m_l / k)</div>
+        <p>Total linear-bearing length to budget for is the load-side arc travel during the lever's powered stroke, plus x_max.</p>
+      </div>
+      <div>
+        <h3>Return stroke &amp; the dead-center technique</h3>
+        <p>The same spring pushes both masses back toward the home hard stop — without help, they arrive with roughly the energy they left with, which is the "hammer on anvil" ringing. The fix models both masses on their own linear bearing, pinned to the lever through a slotted (Scotch-yoke) coupling. A crank pin at radius r moving through angle φ (measured from where the arm is parallel to the slide axis) has slide-axis velocity <code>v = r·ω·sin(φ)</code> — zero at φ=0, the mechanical "dead center." Mount each bearing axis parallel to its arm <em>at the home position</em> (α=0) and that mass's return velocity vanishes right at contact, no matter the leftover energy:</p>
+        <div class="formula">E_return = η² · KE_in   (round trip: through the lever, spring, and back)
+I_eff = I_lever + m_e·L1²·sin²(α_e) + m_l·R²·sin²(α_l)
+ω_home = √( 2·E_return / I_eff )
+v_e,home = L1·ω_home·sin(α_e)
+v_l,home = R·ω_home·sin(α_l)</div>
+        <p>At α_e = α_l = 0, both v_e,home and v_l,home are exactly zero — all of E_return converts into spinning the lever itself, which is a far smaller thing to arrest than two heavy translating masses. This is a purely geometric answer, not a damping one: no buffer material required. The catch is that exact dead center also means zero torque at that same point, so the forward stroke needs a small deliberate offset (or an off-axis component in the incoming impact) to break away reliably — α_e and α_l let you dial in exactly how much residual return velocity that reliability margin costs.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px;">This is a lumped-parameter hand-calculation intended for scoping bench-test hardware (spring rate, stroke, arm lengths) — not a certified dynamic simulation. Arc travel on the load side is a first-order approximation of the true slider/connecting-link path; the return-stroke section assumes a slotted/Scotch-yoke coupling specifically (a simple connecting-rod link will behave similarly near dead center but not identically). Verify against a CAD motion study or prototype once β, the rotation range, or the offset angles are large.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- unit conversion constants ----------
+  const IN_TO_M = 0.0254;
+  const LBF_TO_N = 4.4482216153;
+  const LBM_TO_KG = 0.45359237;
+  const DEG_TO_RAD = Math.PI / 180;
+  const G = 9.80665;
+  const INERTIA_US_TO_SI = LBM_TO_KG * IN_TO_M * IN_TO_M; // lbm·in² -> kg·m²
+
+  const UNITS = {
+    us: { length: "in", force: "lbf", mass: "lb", velocity: "in/s", rate: "lbf/in", time: "s", inertia: "lbm·in²" },
+    si: { length: "mm", force: "N", mass: "kg", velocity: "m/s", rate: "N/mm", time: "s", inertia: "kg·m²" }
+  };
+
+  // conversion: value in display unit -> SI base (m, N, kg, m/s, N/m)
+  function toSI(kind, v, sys) {
+    if (v === "" || v === null || isNaN(v)) return 0;
+    v = parseFloat(v);
+    if (sys === "us") {
+      switch (kind) {
+        case "length": return v * IN_TO_M;
+        case "force": return v * LBF_TO_N;
+        case "mass": return v * LBM_TO_KG;
+        case "velocity": return v * IN_TO_M; // in/s -> m/s
+        case "rate": return v * LBF_TO_N / IN_TO_M; // lbf/in -> N/m
+        case "inertia": return v * INERTIA_US_TO_SI; // lbm·in² -> kg·m²
+      }
+    } else {
+      switch (kind) {
+        case "length": return v / 1000; // mm -> m
+        case "force": return v; // N
+        case "mass": return v; // kg
+        case "velocity": return v; // m/s
+        case "rate": return v * 1000; // N/mm -> N/m
+        case "inertia": return v; // kg·m²
+      }
+    }
+    return v;
+  }
+  function fromSI(kind, v, sys) {
+    if (sys === "us") {
+      switch (kind) {
+        case "length": return v / IN_TO_M;
+        case "force": return v / LBF_TO_N;
+        case "mass": return v / LBM_TO_KG;
+        case "velocity": return v / IN_TO_M;
+        case "rate": return v * IN_TO_M / LBF_TO_N;
+        case "inertia": return v / INERTIA_US_TO_SI;
+      }
+    } else {
+      switch (kind) {
+        case "length": return v * 1000;
+        case "force": return v;
+        case "mass": return v;
+        case "velocity": return v;
+        case "rate": return v / 1000;
+        case "inertia": return v;
+      }
+    }
+    return v;
+  }
+
+  // ---------- state: canonical SI values ----------
+  let sys = "us";
+  const state = {
+    L1: 2.0 * IN_TO_M,
+    L2: 5.0 * IN_TO_M,
+    beta: 150,
+    Fe: 300 * LBF_TO_N,
+    me: 0.5 * LBM_TO_KG,
+    ve: 120 * IN_TO_M,
+    ml: 2.0 * LBM_TO_KG,
+    k: 50 * LBF_TO_N / IN_TO_M,
+    xBudget: 1.0 * IN_TO_M,
+    eta: 0.85,
+    springMode: "givenK",
+    alphaEffort: 3,
+    alphaLoad: 3,
+    ILever: 1.0 * INERTIA_US_TO_SI
+  };
+
+  const ids = ["L1", "L2", "Fe", "me", "ve", "ml", "k", "xBudget", "ILever"];
+  const kindOf = { L1: "length", L2: "length", Fe: "force", me: "mass", ve: "velocity", ml: "mass", k: "rate", xBudget: "length", ILever: "inertia" };
+
+  function refreshUnitTags() {
+    document.querySelectorAll(".unit-tag[data-u]").forEach(el => {
+      el.textContent = UNITS[sys][el.getAttribute("data-u")];
+    });
+  }
+
+  function pushStateToInputs() {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      const v = fromSI(kindOf[id], state[id], sys);
+      el.value = round(v, 4);
+    });
+    document.getElementById("beta").value = state.beta;
+    document.getElementById("betaRange").value = state.beta;
+    document.getElementById("eta").value = Math.round(state.eta * 100);
+    document.getElementById("alphaEffort").value = state.alphaEffort;
+    document.getElementById("alphaLoad").value = state.alphaLoad;
+  }
+
+  function round(v, d) {
+    const f = Math.pow(10, d);
+    return Math.round(v * f) / f;
+  }
+  function fmt(v, d) {
+    if (!isFinite(v)) return "—";
+    return v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  // ---------- wire up inputs ----------
+  ids.forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      state[id] = toSI(kindOf[id], e.target.value, sys);
+      compute();
+    });
+  });
+  document.getElementById("beta").addEventListener("input", e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) return;
+    v = Math.min(180, Math.max(1, v));
+    state.beta = v;
+    document.getElementById("betaRange").value = v;
+    compute();
+  });
+  document.getElementById("betaRange").addEventListener("input", e => {
+    state.beta = parseFloat(e.target.value);
+    document.getElementById("beta").value = state.beta;
+    compute();
+  });
+  document.getElementById("eta").addEventListener("input", e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) v = 85;
+    v = Math.min(100, Math.max(5, v));
+    state.eta = v / 100;
+    compute();
+  });
+  document.getElementById("alphaEffort").addEventListener("input", e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) v = 0;
+    state.alphaEffort = clamp(v, 0, 89.9);
+    compute();
+  });
+  document.getElementById("alphaLoad").addEventListener("input", e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) v = 0;
+    state.alphaLoad = clamp(v, 0, 89.9);
+    compute();
+  });
+  document.querySelectorAll('input[name="springMode"]').forEach(r => {
+    r.addEventListener("change", e => {
+      state.springMode = e.target.value;
+      document.getElementById("rowK").style.display = state.springMode === "givenK" ? "" : "none";
+      document.getElementById("rowX").style.display = state.springMode === "givenX" ? "" : "none";
+      document.getElementById("lbl_xmax").textContent = state.springMode === "givenK"
+        ? "Max. load-mass travel (xₘₐₓ)" : "Load-mass travel (given budget)";
+      document.getElementById("lbl_k").textContent = state.springMode === "givenK"
+        ? "Spring rate in use" : "Required spring rate";
+      compute();
+    });
+  });
+
+  document.getElementById("unitToggle").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-unit]");
+    if (!btn) return;
+    sys = btn.getAttribute("data-unit");
+    document.querySelectorAll("#unitToggle button").forEach(b => b.classList.toggle("active", b === btn));
+    refreshUnitTags();
+    pushStateToInputs();
+    compute();
+  });
+
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute("data-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    let next;
+    if (!cur) next = prefersDark ? "light" : "dark";
+    else next = cur === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    drawDiagram(lastCompute);
+  });
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // ---------- physics ----------
+  let lastCompute = null;
+
+  function computeAll() {
+    const { L1, L2, beta: betaDeg, Fe, me, ve, ml, k, xBudget, eta, springMode,
+      alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever } = state;
+    const beta = betaDeg * DEG_TO_RAD;
+    const R = Math.sqrt(Math.max(0, L1 * L1 + L2 * L2 - 2 * L1 * L2 * Math.cos(beta)));
+    const MA = R > 1e-9 ? L1 / R : NaN;
+    const Fl = Fe * MA;
+
+    const KEin = 0.5 * me * ve * ve;
+    const sE = Fe > 1e-9 ? KEin / Fe : 0;
+    const dTheta = L1 > 1e-9 ? sE / L1 : 0; // rad
+    const sL = R * dTheta;
+    const tE = ve > 1e-9 ? 2 * sE / ve : 0;
+
+    const energyToLoad = eta * KEin;
+    const vL = ml > 1e-9 ? Math.sqrt(2 * energyToLoad / ml) : 0;
+    const tL = vL > 1e-9 ? 2 * sL / vL : 0;
+
+    let kUsed, xMax;
+    if (springMode === "givenK") {
+      kUsed = k;
+      xMax = kUsed > 1e-9 ? vL * Math.sqrt(ml / kUsed) : 0;
+    } else {
+      xMax = xBudget;
+      kUsed = xMax > 1e-9 ? ml * vL * vL / (xMax * xMax) : 0;
+    }
+    const FspringMax = kUsed * xMax;
+    const tSpring = kUsed > 1e-9 ? (Math.PI / 2) * Math.sqrt(ml / kUsed) : 0;
+    const aMaxG = ml > 1e-9 ? (FspringMax / ml) / G : 0;
+    const totalTravel = sL + xMax;
+    const totalTime = tE + tL + tSpring;
+
+    let gamma = NaN;
+    if (L1 > 1e-9 && R > 1e-9) {
+      gamma = Math.acos(clamp((L1 * L1 + R * R - L2 * L2) / (2 * L1 * R), -1, 1));
+    }
+
+    const dThetaDeg = dTheta / DEG_TO_RAD;
+    const gammaDeg = gamma / DEG_TO_RAD;
+
+    // ---------- return stroke / home-stop impact ----------
+    const alphaEffort = alphaEffortDeg * DEG_TO_RAD;
+    const alphaLoad = alphaLoadDeg * DEG_TO_RAD;
+    const Ereturn = eta * eta * KEin;
+    const Ieff = ILever + me * L1 * L1 * Math.sin(alphaEffort) * Math.sin(alphaEffort)
+                        + ml * R * R * Math.sin(alphaLoad) * Math.sin(alphaLoad);
+    const omegaHome = Ieff > 1e-12 ? Math.sqrt(2 * Ereturn / Ieff) : NaN;
+    const vEffortHome = isFinite(omegaHome) ? L1 * omegaHome * Math.sin(alphaEffort) : NaN;
+    const vLoadHome = isFinite(omegaHome) ? R * omegaHome * Math.sin(alphaLoad) : NaN;
+    const omegaHomeRpm = isFinite(omegaHome) ? omegaHome * 60 / (2 * Math.PI) : NaN;
+    const deadCenter = alphaEffortDeg < 0.01 && alphaLoadDeg < 0.01;
+
+    const warnings = [];
+    if (L1 <= 0 || L2 <= 0) warnings.push("Arm length must be positive.");
+    if (!(betaDeg > 0 && betaDeg <= 180)) warnings.push("Bend angle must be between 0° and 180°.");
+    if (isFinite(MA) && MA >= 1) warnings.push("L₁/R ≥ 1 — this is no longer force-reducing like a typical class-3 ratio. Check L₁, L₂, β.");
+    if (dThetaDeg > 150) warnings.push("Required rotation exceeds 150° — verify this is mechanically achievable.");
+    if (R < 1e-6) warnings.push("Arm segments collapse onto each other at this bend angle — increase β.");
+
+    const returnWarnings = [];
+    if (Ieff <= 1e-12) {
+      returnWarnings.push("Enter a nonzero lever inertia — a massless lever with any dead-center offset gives an undefined spin rate.");
+    } else if (deadCenter) {
+      returnWarnings.push("DEAD CENTER — both masses return at 0 velocity; all return energy is lever spin.");
+    } else {
+      returnWarnings.push("Offset from dead center — residual return velocity present on the axis with α>0.");
+    }
+
+    return {
+      R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
+      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings,
+      Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings,
+      geom: { L1, L2, beta, alphaEffort, alphaLoad }
+    };
+  }
+
+  function statusChip(text, ok) {
+    const span = document.createElement("span");
+    span.className = "chip " + (ok ? "ok" : "warn");
+    span.textContent = text;
+    return span;
+  }
+
+  function setStat(id, value, unit, decimals) {
+    const el = document.getElementById(id);
+    if (!isFinite(value)) { el.textContent = "—"; return; }
+    el.innerHTML = fmt(value, decimals) + (unit ? ' <span class="unit">' + unit + '</span>' : "");
+  }
+
+  function compute() {
+    const r = computeAll();
+    lastCompute = r;
+    const u = UNITS[sys];
+
+    // status
+    const statusRow = document.getElementById("statusRow");
+    statusRow.innerHTML = "";
+    if (r.warnings.length === 0) {
+      statusRow.appendChild(statusChip("GEOMETRY OK", true));
+      statusRow.appendChild(statusChip("CLASS-3 RATIO " + fmt(r.MA, 3), true));
+    } else {
+      r.warnings.forEach(w => statusRow.appendChild(statusChip(w, false)));
+    }
+
+    setStat("out_Fl", fromSI("force", r.Fl, sys), u.force, 2);
+    setStat("out_MA", r.MA, "", 3);
+    setStat("out_R", fromSI("length", r.R, sys), u.length, 3);
+    setStat("out_gamma", r.gammaDeg, "deg", 1);
+
+    setStat("out_se", fromSI("length", r.sE, sys), u.length, 3);
+    setStat("out_dtheta", r.dThetaDeg, "deg", 1);
+    setStat("out_sl", fromSI("length", r.sL, sys), u.length, 3);
+    setStat("out_vl", fromSI("velocity", r.vL, sys), u.velocity, 2);
+    setStat("out_te", r.tE * 1000, "ms", 2);
+    setStat("out_tl", r.tL * 1000, "ms", 2);
+
+    setStat("out_xmax", fromSI("length", r.xMax, sys), u.length, 3);
+    setStat("out_kreq", fromSI("rate", r.kUsed, sys), u.rate, 2);
+    setStat("out_Fspring", fromSI("force", r.FspringMax, sys), u.force, 2);
+    setStat("out_tspring", r.tSpring * 1000, "ms", 2);
+
+    // return stroke
+    const returnStatusRow = document.getElementById("returnStatusRow");
+    returnStatusRow.innerHTML = "";
+    r.returnWarnings.forEach(w => returnStatusRow.appendChild(statusChip(w, r.deadCenter && r.Ieff > 1e-12)));
+
+    const energyUnit = sys === "us" ? "in·lbf" : "J";
+    const energyReturn = sys === "us" ? r.Ereturn / (LBF_TO_N * IN_TO_M) : r.Ereturn;
+    setStat("out_Ereturn", energyReturn, energyUnit, 4);
+    setStat("out_Ieff", fromSI("inertia", r.Ieff, sys), u.inertia, sys === "us" ? 4 : 6);
+    setStat("out_omega", r.omegaHome, "rad/s", 2);
+    setStat("out_omegaRpm", r.omegaHomeRpm, "rpm-eq.", 1);
+    setStat("out_veHome", fromSI("velocity", r.vEffortHome, sys), u.velocity, 3);
+    setStat("out_vlHome", fromSI("velocity", r.vLoadHome, sys), u.velocity, 3);
+
+    buildSummary(r);
+    drawDiagram(r);
+  }
+
+  function buildSummary(r) {
+    const u = UNITS[sys];
+    const energyUnit = sys === "us" ? "in·lbf" : "J";
+    const energyReturn = sys === "us" ? r.Ereturn / (LBF_TO_N * IN_TO_M) : r.Ereturn;
+    const rows = [
+      ["Load force (F_l)", fromSI("force", r.Fl, sys), u.force, 2],
+      ["Effective load arm (R)", fromSI("length", r.R, sys), u.length, 3],
+      ["Lever rotation, hard stop → full extension (Δθ)", r.dThetaDeg, "deg", 1],
+      ["Minimum effort-side travel (s_e)", fromSI("length", r.sE, sys), u.length, 3],
+      ["Load-side arc travel, powered phase (s_l)", fromSI("length", r.sL, sys), u.length, 3],
+      ["Load handoff velocity (v_l)", fromSI("velocity", r.vL, sys), u.velocity, 2],
+      [state.springMode === "givenK" ? "Max load-mass travel (x_max)" : "Load-mass travel (from budget)", fromSI("length", r.xMax, sys), u.length, 3],
+      [state.springMode === "givenK" ? "Spring rate (as entered)" : "Required spring rate", fromSI("rate", r.kUsed, sys), u.rate, 2],
+      ["Peak spring force", fromSI("force", r.FspringMax, sys), u.force, 2],
+      ["Peak deceleration at max compression", r.aMaxG, "g", 2],
+      ["Total linear-bearing travel needed", fromSI("length", r.totalTravel, sys), u.length, 3],
+      ["Total event duration (est.)", r.totalTime * 1000, "ms", 2],
+      ["Round-trip return energy at home stop", energyReturn, energyUnit, 4],
+      ["Lever spin at home contact (ω)", r.omegaHome, "rad/s", 2],
+      ["Effort mass return velocity at contact", fromSI("velocity", r.vEffortHome, sys), u.velocity, 3],
+      ["Load mass return velocity at contact", fromSI("velocity", r.vLoadHome, sys), u.velocity, 3]
+    ];
+    const tbody = document.querySelector("#summaryTable tbody");
+    tbody.innerHTML = "";
+    rows.forEach(([label, val, unit, dec]) => {
+      const tr = document.createElement("tr");
+      const tdL = document.createElement("td");
+      tdL.textContent = label;
+      const tdV = document.createElement("td");
+      tdV.className = "val";
+      tdV.textContent = isFinite(val) ? fmt(val, dec) : "—";
+      const tdU = document.createElement("td");
+      tdU.className = "unit";
+      tdU.textContent = unit;
+      tr.appendChild(tdL); tr.appendChild(tdV); tr.appendChild(tdU);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- diagram ----------
+  const canvas = document.getElementById("lever");
+  const ctx = canvas.getContext("2d");
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(340 * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (lastCompute) drawDiagram(lastCompute);
+  }
+  window.addEventListener("resize", resizeCanvas);
+
+  function drawDiagram(r) {
+    if (!r) return;
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width || 900, H = 340;
+    ctx.clearRect(0, 0, W, H);
+
+    const ink = cssVar("--ink");
+    const inkFaint = cssVar("--ink-faint");
+    const inkSoft = cssVar("--ink-soft");
+    const accent = cssVar("--accent");
+    const ok = cssVar("--ok");
+    const line = cssVar("--line-strong");
+
+    const { L1, L2, beta } = r.geom;
+    const span = Math.max(L1 + L2, r.R || 0, 0.05);
+    const scale = (W * 0.42) / span; // px per meter, leaves room for bearing/spring on the right
+
+    const F = { x: W * 0.18, y: H * 0.58 };
+    const theta0 = -28 * DEG_TO_RAD; // schematic "ready" orientation of FE
+
+    function armPts(theta0) {
+      const E = { x: F.x + L1 * scale * Math.cos(theta0), y: F.y + L1 * scale * Math.sin(theta0) };
+      const phiEF = theta0 + Math.PI;
+      const angleEP = phiEF - beta;
+      const P = { x: E.x + L2 * scale * Math.cos(angleEP), y: E.y + L2 * scale * Math.sin(angleEP) };
+      return { E, P };
+    }
+
+    const ready = armPts(theta0);
+    const full = armPts(theta0 - r.dTheta); // rotate "up" toward full extension
+
+    // ground/pivot hatch symbol at F
+    ctx.strokeStyle = line;
+    ctx.fillStyle = inkFaint;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(F.x - 11, F.y + 16); ctx.lineTo(F.x + 11, F.y + 16); ctx.lineTo(F.x, F.y); ctx.closePath();
+    ctx.stroke();
+    for (let i = -10; i <= 10; i += 5) {
+      ctx.beginPath(); ctx.moveTo(F.x + i, F.y + 16); ctx.lineTo(F.x + i - 5, F.y + 24); ctx.stroke();
+    }
+
+    function drawArm(pts, style) {
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = style.width;
+      ctx.setLineDash(style.dash || []);
+      ctx.beginPath();
+      ctx.moveTo(F.x, F.y); ctx.lineTo(pts.E.x, pts.E.y); ctx.lineTo(pts.P.x, pts.P.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // ready (dashed, faint)
+    drawArm(ready, { color: inkFaint, width: 1.6, dash: [5, 4] });
+    // full extension (solid, bold)
+    drawArm(full, { color: ink, width: 2.6 });
+
+    // rotation sweep arc at F
+    ctx.strokeStyle = inkFaint;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    const arcR = L1 * scale * 0.55;
+    ctx.arc(F.x, F.y, arcR, -theta0 * -1 + Math.PI, -theta0 * -1 + Math.PI, false); // no-op guard
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(F.x, F.y, arcR, theta0, theta0 - r.dTheta, true);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // dead-center alignment indicators: reference = home arm direction, actual = mounted bearing axis (offset by alpha)
+    function drawAlignment(refPt, alpha, color, len) {
+      const refAngle = Math.atan2(refPt.y - F.y, refPt.x - F.x);
+      const mountAngle = refAngle + alpha;
+      ctx.strokeStyle = inkFaint;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([1, 3]);
+      ctx.beginPath();
+      ctx.moveTo(F.x, F.y);
+      ctx.lineTo(F.x + Math.cos(refAngle) * len, F.y + Math.sin(refAngle) * len);
+      ctx.stroke();
+      if (Math.abs(alpha) > 1e-4) {
+        ctx.strokeStyle = color;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(F.x, F.y);
+        ctx.lineTo(F.x + Math.cos(mountAngle) * len, F.y + Math.sin(mountAngle) * len);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(F.x, F.y, len * 0.3, refAngle, mountAngle, alpha < 0);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+    drawAlignment(ready.E, r.geom.alphaEffort, accent, L1 * scale * 0.8);
+    drawAlignment(ready.P, r.geom.alphaLoad, ok, r.R * scale * 0.7);
+
+    // fulcrum point
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(F.x, F.y, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = inkSoft;
+    ctx.font = "11px " + cssVar("--font-mono");
+    ctx.fillText("F", F.x - 4, F.y + 30);
+
+    // effort point + force arrow (on full-extension pose, most representative)
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.arc(full.E.x, full.E.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText("E", full.E.x + 6, full.E.y - 6);
+    // perpendicular effort force arrow
+    const armAngle = Math.atan2(full.E.y - F.y, full.E.x - F.x);
+    const perp = armAngle - Math.PI / 2;
+    const aLen = 34;
+    const ax = full.E.x + Math.cos(perp) * aLen, ay = full.E.y + Math.sin(perp) * aLen;
+    drawArrow(full.E.x, full.E.y, ax, ay, accent, 2.2);
+    ctx.fillStyle = accent;
+    ctx.fillText("Fe", ax + 4, ay);
+
+    // load point
+    ctx.fillStyle = ok;
+    ctx.beginPath(); ctx.arc(full.P.x, full.P.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText("P", full.P.x - 4, full.P.y - 10);
+
+    // linear bearing axis (horizontal from P to the right) + spring + slider block
+    const bearingY = full.P.y;
+    const bearingStartX = full.P.x;
+    const arcTravelPx = 18; // fixed small visual offset representing s_l already consumed getting here
+    const springZoneW = Math.min(140, W - bearingStartX - 60);
+    const bearingEndX = bearingStartX + Math.max(60, springZoneW);
+
+    ctx.strokeStyle = ok;
+    ctx.setLineDash([1, 4]);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(bearingStartX, bearingY); ctx.lineTo(bearingEndX, bearingY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // slider block at P
+    ctx.fillStyle = ok;
+    ctx.fillRect(bearingStartX - 7, bearingY - 7, 14, 14);
+
+    // spring zigzag at the end
+    const coils = 6;
+    const springStart = bearingStartX + (bearingEndX - bearingStartX) * 0.35;
+    ctx.strokeStyle = inkSoft;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(springStart, bearingY);
+    const seg = (bearingEndX - springStart) / coils;
+    for (let i = 0; i < coils; i++) {
+      const x1 = springStart + seg * (i + 0.5);
+      ctx.lineTo(x1, bearingY + (i % 2 === 0 ? -9 : 9));
+    }
+    ctx.lineTo(bearingEndX, bearingY);
+    ctx.stroke();
+
+    // wall at end
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bearingEndX, bearingY - 16); ctx.lineTo(bearingEndX, bearingY + 16); ctx.stroke();
+
+    ctx.fillStyle = inkFaint;
+    ctx.font = "10.5px " + cssVar("--font-mono");
+    ctx.fillText("linear bearing → spring", bearingStartX + 4, bearingY - 20);
+
+    // arm length labels
+    ctx.fillStyle = inkSoft;
+    ctx.font = "10.5px " + cssVar("--font-mono");
+    const midFE = { x: (F.x + full.E.x) / 2, y: (F.y + full.E.y) / 2 };
+    ctx.fillText("L₁", midFE.x - 14, midFE.y - 6);
+    const midEP = { x: (full.E.x + full.P.x) / 2, y: (full.E.y + full.P.y) / 2 };
+    ctx.fillText("L₂", midEP.x + 6, midEP.y - 6);
+
+    // beta arc label at E
+    ctx.fillStyle = accent;
+    ctx.font = "10px " + cssVar("--font-mono");
+    ctx.fillText("β", full.E.x - 16, full.E.y + 14);
+  }
+
+  function drawArrow(x1, y1, x2, y2, color, width) {
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const hs = 6;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - hs * Math.cos(angle - Math.PI / 6), y2 - hs * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(x2 - hs * Math.cos(angle + Math.PI / 6), y2 - hs * Math.sin(angle + Math.PI / 6));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // ---------- init ----------
+  refreshUnitTags();
+  pushStateToInputs();
+  resizeCanvas();
+  compute();
+})();
+</script>
+</body>
+</html>
