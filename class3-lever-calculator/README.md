@@ -6,6 +6,20 @@ down a linear bearing into a spring — including the return stroke, where the
 same spring sends both masses back to a home hard stop. Open `index.html` in
 any browser — no build step, no server, no external dependencies.
 
+Two pages, one physics engine:
+
+- **`index.html`** — single-point calculator: one set of inputs, full
+  breakdown of the outputs, live schematic.
+- **`optimizer.html`** — Design Space Explorer: Monte Carlo sweep over the
+  same model. Lock the parameters you've already fixed, give the rest a
+  range, weight the objectives that matter for your build, and get back a
+  ranked list plus a Pareto-front view of the trade-offs. Results save
+  locally (IndexedDB) and export to CSV or a real `.xlsx`.
+
+Both load `physics.js` (same formulas, one source of truth) and
+`../shared/theme.css` (shared visual language across calculators in this
+repo).
+
 ## What it's for
 
 You're designing a linear shock absorber: an effort mass impacts the lever,
@@ -144,6 +158,44 @@ This is a lumped-parameter hand calculation for scoping bench-test hardware
   large.
 - The spring is assumed near-lossless (its own hysteresis isn't modeled
   separately; fold it into η if it's significant for your spring).
+
+## Design Space Explorer (`optimizer.html`)
+
+For each input parameter you choose either **Lock** (a fixed value) or
+**Range** (min/max, uniform random draw per sample). Samples are generated
+with a seeded `mulberry32` PRNG (`shared/prng.js`) — the same seed and
+configuration always reproduce the same run.
+
+Every sample runs through `physics.js`, the identical engine behind
+`index.html`. A sample is **feasible** if its geometry is valid, it stays a
+genuine class-3 ratio, its required rotation is within your cap, the
+dead-center return math is defined, and any optional peak-deceleration /
+total-travel constraints are met.
+
+**Scoring**: pick which objectives matter (effort travel, return velocities,
+return energy, total travel, peak deceleration, or deviation from a target
+load force) and a weight for each — everything is "smaller is better." Each
+active objective is min–max normalized across the feasible set for this run,
+inverted, and combined into a weighted composite score. The ranked list is
+produced with the JS engine's native `Array.prototype.sort` (an O(n log n)
+comparison sort), not a hand-rolled quadratic one.
+
+**Pareto front**: for whichever two objectives you plot, the non-dominated
+frontier is found with the standard 2D skyline algorithm — sort by X
+ascending (O(n log n)), sweep once tracking the best Y seen so far, and a
+point joins the frontier the instant it beats that running minimum. Total
+cost is O(n log n), dominated by the sort, versus O(n²) for naive pairwise
+dominance checking.
+
+**Persistence & export**: "Save run" keeps the top 500 samples by score in
+this browser's IndexedDB (`shared/idb-store.js`), so it survives closing the
+tab — most reliable when used via a hosted URL (see the top-level README's
+GitHub Pages section) rather than `file://`, since browsers treat local-file
+storage inconsistently. "Export CSV" / "Export .xlsx" (`shared/
+spreadsheet-export.js`, a dependency-free zip/OOXML writer — a real
+spreadsheet file, not a renamed CSV) always operate on the complete,
+un-trimmed feasible set from the current run, so run those first if you want
+everything from a very large sweep.
 
 ## Repo convention
 

@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bent Class-3 Lever — Design Space Explorer</title>
+<link rel="stylesheet" href="../shared/theme.css" />
+<style>
+  /* ---------- page-specific additions ---------- */
+  .backlink { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); text-decoration: none; }
+  .backlink:hover { color: var(--accent); }
+
+  .param-table { width: 100%; border-collapse: collapse; }
+  .param-table th {
+    text-align: left; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-faint); padding: 4px 6px; border-bottom: 1px solid var(--line-strong);
+  }
+  .param-table td { padding: 6px 6px; border-bottom: 1px solid var(--line); font-size: 12.5px; vertical-align: middle; }
+  .param-table tr:last-child td { border-bottom: none; }
+  .param-table input[type="number"] { width: 68px; font-size: 12.5px; padding: 5px 6px; }
+  .mode-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+  .mode-toggle button {
+    border: none; background: var(--surface-2); color: var(--ink-soft); font-family: var(--font-mono);
+    font-size: 10.5px; padding: 5px 8px; cursor: pointer; letter-spacing: 0.03em;
+  }
+  .mode-toggle button.active { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .range-cell { display: flex; align-items: center; gap: 4px; }
+  .range-cell span.to { color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px; }
+  .param-label { font-size: 12.5px; color: var(--ink); }
+
+  .weight-row { display: grid; grid-template-columns: 1fr 60px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .weight-row label { font-size: 12.5px; color: var(--ink); }
+  .weight-row input { width: 100%; }
+
+  .run-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
+  .run-btn {
+    background: var(--accent); color: var(--accent-ink); border: none; border-radius: 7px;
+    padding: 10px 18px; font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.03em; cursor: pointer;
+  }
+  .run-btn:hover { filter: brightness(1.06); }
+  .run-btn:disabled { opacity: 0.5; cursor: default; }
+  .ghost-btn {
+    background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--line-strong);
+    border-radius: 7px; padding: 9px 14px; font-family: var(--font-mono); font-size: 12px;
+    cursor: pointer; letter-spacing: 0.02em;
+  }
+  .ghost-btn:hover { color: var(--ink); }
+
+  .summary-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--ink); }
+  th.sortable .arrow { color: var(--accent); margin-left: 3px; }
+  td.pareto-yes { position: relative; }
+  tr.pareto-row { background: var(--accent-soft); }
+
+  .axis-picker { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .axis-picker label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .axis-picker select {
+    font-family: var(--font-mono); font-size: 12px; padding: 6px 8px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink);
+  }
+  canvas#scatter { width: 100%; height: 320px; display: block; background: var(--surface-2); border-radius: 8px; }
+
+  .saved-run { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .saved-run:last-child { border-bottom: none; }
+  .saved-run .meta { font-size: 12px; color: var(--ink-soft); }
+  .saved-run .meta strong { color: var(--ink); }
+  .saved-run .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .saved-run .actions button {
+    background: none; border: 1px solid var(--line-strong); color: var(--ink-soft); border-radius: 5px;
+    padding: 4px 8px; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer;
+  }
+  .saved-run .actions button:hover { color: var(--accent); border-color: var(--accent); }
+
+  .save-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .save-row input[type="text"] {
+    flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line-strong);
+    background: var(--surface-2); color: var(--ink); font-size: 13px; font-family: var(--font-sans);
+  }
+
+  .export-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title-block">
+      <div class="eyebrow">Mechanism Design Instrument</div>
+      <h1>Design Space Explorer — Sweep &amp; Optimize</h1>
+      <p class="sub">Monte Carlo parameter sweep over the bent class-3 lever model. Lock the values you've already fixed, give the rest a range, and rank the results against the objectives that matter for your build. <a class="backlink" href="index.html">← back to the single-point calculator</a></p>
+    </div>
+    <div class="top-controls">
+      <div class="segmented" id="unitToggle" role="group" aria-label="Unit system">
+        <button data-unit="us" class="active">US CUSTOMARY</button>
+        <button data-unit="si">METRIC</button>
+      </div>
+      <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============ CONFIG COLUMN ============ -->
+    <div class="col">
+
+      <div class="card">
+        <h2><span class="n">01</span> Parameters — Lock or Range</h2>
+        <div class="table-wrap">
+          <table class="param-table" id="paramTable">
+            <thead><tr><th>Parameter</th><th>Mode</th><th>Value / Range</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="radio-toggle" id="springModeToggle" style="margin-top:14px;">
+          <label><input type="radio" name="springMode" value="givenK" checked> <span><strong>Candidate spring rate</strong> — sweep solves required travel</span></label>
+          <label><input type="radio" name="springMode" value="givenX"> <span><strong>Stroke budget</strong> — sweep solves required spring rate</span></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">02</span> Constraints</h2>
+        <div class="field-row">
+          <label><span class="label-text">Max lever rotation</span><span class="hint">hard cap, ≤150° (the physics model's own limit)</span></label>
+          <div class="input-unit"><input type="number" id="cMaxDTheta" value="150" min="1" max="150" /><span class="unit-tag">deg</span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Max peak deceleration</span><span class="hint">blank = unconstrained</span></label>
+          <div class="input-unit"><input type="number" id="cMaxG" placeholder="—" /><span class="unit-tag">g</span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Max total linear-bearing travel</span><span class="hint">blank = unconstrained</span></label>
+          <div class="input-unit"><input type="number" id="cMaxTravel" placeholder="—" /><span class="unit-tag" data-u="length"></span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Target load force</span><span class="hint">optional — enables the "match target force" objective below</span></label>
+          <div class="input-unit"><input type="number" id="cTargetFl" placeholder="—" /><span class="unit-tag" data-u="force"></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">03</span> Objective Weights</h2>
+        <p class="note" style="margin-top:-6px;">Every objective here is "smaller is better." Set a weight to 0 to ignore it. Each is min–max normalized across the feasible samples in this run before weighting, so a bench of 1000 lbf and one of 0.01 in don't distort each other.</p>
+        <div id="weightRows"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">04</span> Sampling</h2>
+        <div class="field-row">
+          <label><span class="label-text">Samples</span><span class="hint">Monte Carlo draws (uniform within each range)</span></label>
+          <div class="input-unit"><input type="number" id="nSamples" value="2000" min="10" max="50000" step="1" /></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Random seed</span><span class="hint">same seed + same config = identical run, reproducible</span></label>
+          <div class="input-unit"><input type="number" id="seed" value="12345" /></div>
+        </div>
+        <div class="run-bar">
+          <button class="run-btn" id="runBtn" type="button">▶ Run Sweep</button>
+          <button class="ghost-btn" id="randomSeedBtn" type="button">🎲 Randomize seed</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ RESULTS COLUMN ============ -->
+    <div class="col">
+
+      <div class="card">
+        <h2><span class="n">→</span> Run Summary</h2>
+        <div class="summary-strip" id="summaryStrip">
+          <div class="stat"><div class="label">Generated</div><div class="value">—</div></div>
+          <div class="stat"><div class="label">Feasible</div><div class="value">—</div></div>
+          <div class="stat accent"><div class="label">Best score</div><div class="value">—</div></div>
+          <div class="stat"><div class="label">Compute time</div><div class="value">—</div></div>
+        </div>
+        <p class="note" id="emptyNote">No run yet — configure parameters and click Run Sweep. Defaults reproduce a reasonable starting design.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">✓</span> Ranked Results</h2>
+        <p class="note" style="margin-top:-6px;">Sorted by composite score (native <code>Array.sort</code>, O(n log n)) — click any column to re-sort. Showing the top <span id="tableLimitLabel">100</span> of the feasible set.</p>
+        <div class="table-wrap">
+          <table class="spec" id="resultsTable">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">◆</span> Trade-off Scatter &amp; Pareto Front</h2>
+        <div class="axis-picker">
+          <label>X axis</label><select id="axisX"></select>
+          <label>Y axis</label><select id="axisY"></select>
+          <span class="note" id="paretoCount" style="margin:0;"></span>
+        </div>
+        <canvas id="scatter" width="900" height="320"></canvas>
+        <div class="diagram-legend">
+          <span class="item"><span class="swatch" style="background:var(--ink-faint);"></span> feasible sample (color = score)</span>
+          <span class="item"><span class="swatch" style="background:var(--accent);"></span> Pareto-optimal (min X &amp; min Y)</span>
+        </div>
+        <p class="note">The frontier is computed with the standard O(n log n) 2D skyline: sort ascending by X, then sweep keeping the running-best Y — a point is Pareto-optimal the instant its Y beats every point seen so far. Far cheaper than the naive O(n²) pairwise dominance check.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">⬓</span> Save, Export &amp; Persistent Runs</h2>
+        <div class="save-row">
+          <input type="text" id="saveName" placeholder="Name this run (e.g. &quot;low-bounce, tight spring&quot;)" />
+          <button class="ghost-btn" id="saveBtn" type="button">💾 Save run</button>
+        </div>
+        <div class="export-row">
+          <button class="ghost-btn" id="exportCsvBtn" type="button">⬇ Export CSV (full feasible set)</button>
+          <button class="ghost-btn" id="exportXlsxBtn" type="button">⬇ Export .xlsx (full feasible set)</button>
+        </div>
+        <h3 style="font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); margin:18px 0 6px;">Saved runs (this browser)</h3>
+        <div id="savedRunsList"><p class="note">No saved runs yet.</p></div>
+        <p class="note">Saved runs keep the top 500 samples by score, stored locally in this browser (IndexedDB) — persists across sessions on this device. Export CSV/.xlsx right after running if you want the complete, un-trimmed feasible set for a very large sweep.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="methodology">
+    <h2>Methodology</h2>
+    <div class="grid">
+      <div>
+        <h3>Sampling</h3>
+        <p>Each locked parameter is held fixed; each ranged parameter is drawn independently from a uniform distribution between its min and max on every sample. The generator is a seeded <code>mulberry32</code> PRNG — the same seed and configuration always reproduce the same set of samples, so a good run can be re-derived exactly later.</p>
+      </div>
+      <div>
+        <h3>Feasibility</h3>
+        <p>Every sample runs through the same physics engine as the single-point calculator (<code>physics.js</code>). A sample is feasible if its geometry is valid, it stays a genuine class-3 ratio (L₁&lt;R), its required rotation is within the constraint you set, its dead-center return math is defined, and any optional peak-deceleration / total-travel caps are met. Infeasible samples are discarded from ranking but counted in the summary.</p>
+      </div>
+      <div>
+        <h3>Scoring &amp; sort</h3>
+        <p>For each active (weight&gt;0) objective, values are min–max normalized across the feasible set, inverted (since every objective here is "smaller is better"), then combined as a weighted average. The ranked list is produced with the JS engine's native <code>Array.prototype.sort</code> — an O(n log n) comparison sort (TimSort/introsort hybrid depending on engine) — rather than a hand-rolled quadratic sort.</p>
+      </div>
+      <div>
+        <h3>Pareto front</h3>
+        <p>For whichever two objectives you pick to plot, the non-dominated frontier is found with the classic 2D skyline algorithm: sort by X ascending (O(n log n)), then sweep once tracking the best Y seen — a point joins the frontier exactly when it beats that running minimum. Total cost O(n log n), dominated by the sort.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px;">Persistence uses the browser's IndexedDB — no server, no external database. CSV export is universal; the .xlsx export is a real OOXML workbook written by a small dependency-free zip/XML writer (<code>shared/spreadsheet-export.js</code>), not just a renamed CSV.</p>
+  </footer>
+
+</div>
+
+<script src="../shared/prng.js"></script>
+<script src="../shared/spreadsheet-export.js"></script>
+<script src="../shared/idb-store.js"></script>
+<script src="physics.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const LP = window.LeverPhysics;
+  const { DEG_TO_RAD } = LP;
+  let sys = "us";
+
+  // ---------- parameter metadata ----------
+  const PARAM_DEFS = [
+    { id: "L1", label: "Fulcrum → Effort length (L₁)", kind: "length", lock: 2.0, range: [1, 4] },
+    { id: "L2", label: "Effort → Load length (L₂)", kind: "length", lock: 5.0, range: [3, 8] },
+    { id: "beta", label: "Bend angle (β)", kind: "deg", lock: 150, range: [90, 180] },
+    { id: "Fe", label: "Design effort force (Fₑ)", kind: "force", lock: 300, range: [100, 600] },
+    { id: "me", label: "Effort mass (mₑ)", kind: "mass", lock: 0.5, range: [0.1, 2] },
+    { id: "ve", label: "Effort incoming velocity (vₑ)", kind: "velocity", lock: 120, range: [40, 200] },
+    { id: "ml", label: "Load mass (mₗ)", kind: "mass", lock: 2.0, range: [0.5, 5] },
+    { id: "k", label: "Spring rate (k)", kind: "rate", lock: 50, range: [10, 150], springMode: "givenK" },
+    { id: "xBudget", label: "Spring travel budget", kind: "length", lock: 1.0, range: [0.25, 2], springMode: "givenX" },
+    { id: "eta", label: "Efficiency (η)", kind: "pct", lock: 85, range: [60, 95] },
+    { id: "alphaEffort", label: "Effort dead-center offset (αₑ)", kind: "deg", lock: 3, range: [0, 15] },
+    { id: "alphaLoad", label: "Load dead-center offset (αₗ)", kind: "deg", lock: 3, range: [0, 15] },
+    { id: "ILever", label: "Lever inertia (I_lever)", kind: "inertia", lock: 1.0, range: [0.2, 3] }
+  ];
+
+  function paramToSI(p, displayVal) {
+    if (p.kind === "deg") return displayVal;
+    if (p.kind === "pct") return displayVal / 100;
+    return LP.toSI(p.kind, displayVal, sys);
+  }
+  function paramFromSI(p, siVal) {
+    if (p.kind === "deg") return siVal;
+    if (p.kind === "pct") return siVal * 100;
+    return LP.fromSI(p.kind, siVal, sys);
+  }
+  function unitLabel(p) {
+    if (p.kind === "deg") return "deg";
+    if (p.kind === "pct") return "%";
+    return LP.UNITS[sys][p.kind];
+  }
+
+  // param config state: { mode: 'lock'|'range', lock: number, min: number, max: number } in DISPLAY units
+  const paramConfigs = {};
+  PARAM_DEFS.forEach(p => {
+    paramConfigs[p.id] = { mode: "range", lock: p.lock, min: p.range[0], max: p.range[1] };
+  });
+  paramConfigs.beta.mode = "lock"; // sensible default: most people fix bend angle, sweep the rest
+  paramConfigs.ILever.mode = "lock";
+  paramConfigs.eta.mode = "lock";
+
+  let springMode = "givenK";
+
+  // ---------- metrics (all "smaller is better") ----------
+  const METRICS = [
+    { id: "sE", label: "Effort travel", kind: "length", get: s => s.r.sE },
+    { id: "totalTravel", label: "Total linear-bearing travel", kind: "length", get: s => s.r.totalTravel },
+    { id: "vEffortHome", label: "Effort return velocity", kind: "velocity", get: s => s.r.vEffortHome },
+    { id: "vLoadHome", label: "Load return velocity", kind: "velocity", get: s => s.r.vLoadHome },
+    { id: "Ereturn", label: "Return energy at home stop", kind: "energy", get: s => s.r.Ereturn },
+    { id: "aMaxG", label: "Peak deceleration", kind: "g", get: s => s.r.aMaxG },
+    { id: "FloadDevPct", label: "Load-force deviation from target", kind: "pct", get: s => s.FloadDevPct }
+  ];
+  const defaultWeights = { sE: 1, totalTravel: 0.5, vEffortHome: 0.5, vLoadHome: 1, Ereturn: 1, aMaxG: 0.25, FloadDevPct: 0 };
+  const weights = Object.assign({}, defaultWeights);
+
+  function fmtMetric(kind, siVal) {
+    if (kind === "energy") return sys === "us" ? siVal / (LP.LBF_TO_N * LP.IN_TO_M) : siVal;
+    if (kind === "g" || kind === "pct") return siVal;
+    return LP.fromSI(kind, siVal, sys);
+  }
+  function metricUnit(kind) {
+    if (kind === "energy") return sys === "us" ? "in·lbf" : "J";
+    if (kind === "g") return "g";
+    if (kind === "pct") return "%";
+    return LP.UNITS[sys][kind];
+  }
+
+  // ---------- build parameter table UI ----------
+  const paramTableBody = document.querySelector("#paramTable tbody");
+  function renderParamTable() {
+    paramTableBody.innerHTML = "";
+    PARAM_DEFS.forEach(p => {
+      if (p.springMode && p.springMode !== springMode) return;
+      const cfg = paramConfigs[p.id];
+      const tr = document.createElement("tr");
+      tr.dataset.id = p.id;
+
+      const tdLabel = document.createElement("td");
+      tdLabel.innerHTML = `<span class="param-label">${p.label}</span>`;
+      tr.appendChild(tdLabel);
+
+      const tdMode = document.createElement("td");
+      tdMode.innerHTML = `<div class="mode-toggle">
+        <button data-mode="lock" class="${cfg.mode === "lock" ? "active" : ""}">LOCK</button>
+        <button data-mode="range" class="${cfg.mode === "range" ? "active" : ""}">RANGE</button>
+      </div>`;
+      tr.appendChild(tdMode);
+
+      const tdVal = document.createElement("td");
+      renderValueCell(tdVal, p, cfg);
+      tr.appendChild(tdVal);
+
+      paramTableBody.appendChild(tr);
+
+      tdMode.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          cfg.mode = btn.dataset.mode;
+          tdMode.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+          renderValueCell(tdVal, p, cfg);
+        });
+      });
+    });
+  }
+
+  function renderValueCell(td, p, cfg) {
+    td.innerHTML = "";
+    const unit = unitLabel(p);
+    if (cfg.mode === "lock") {
+      td.innerHTML = `<div class="range-cell"><input type="number" class="v-lock" step="any" value="${cfg.lock}"> <span class="to">${unit}</span></div>`;
+      td.querySelector(".v-lock").addEventListener("input", e => { cfg.lock = parseFloat(e.target.value) || 0; });
+    } else {
+      td.innerHTML = `<div class="range-cell"><input type="number" class="v-min" step="any" value="${cfg.min}"> <span class="to">to</span> <input type="number" class="v-max" step="any" value="${cfg.max}"> <span class="to">${unit}</span></div>`;
+      td.querySelector(".v-min").addEventListener("input", e => { cfg.min = parseFloat(e.target.value) || 0; });
+      td.querySelector(".v-max").addEventListener("input", e => { cfg.max = parseFloat(e.target.value) || 0; });
+    }
+  }
+
+  document.querySelectorAll('input[name="springMode"]').forEach(r => {
+    r.addEventListener("change", e => { springMode = e.target.value; renderParamTable(); });
+  });
+
+  // ---------- weight rows ----------
+  const weightRowsEl = document.getElementById("weightRows");
+  function renderWeightRows() {
+    weightRowsEl.innerHTML = "";
+    METRICS.forEach(m => {
+      const row = document.createElement("div");
+      row.className = "weight-row";
+      row.innerHTML = `<label>Minimize: ${m.label}</label><input type="number" step="0.05" min="0" max="5" value="${weights[m.id]}">`;
+      row.querySelector("input").addEventListener("input", e => { weights[m.id] = Math.max(0, parseFloat(e.target.value) || 0); });
+      weightRowsEl.appendChild(row);
+    });
+  }
+
+  // ---------- unit toggle / theme ----------
+  function refreshLengthTags() {
+    document.querySelectorAll('.unit-tag[data-u="length"]').forEach(el => el.textContent = LP.UNITS[sys].length);
+    document.querySelectorAll('.unit-tag[data-u="force"]').forEach(el => el.textContent = LP.UNITS[sys].force);
+  }
+  document.getElementById("unitToggle").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-unit]");
+    if (!btn) return;
+    const oldSys = sys;
+    sys = btn.getAttribute("data-unit");
+    if (oldSys === sys) return;
+    document.querySelectorAll("#unitToggle button").forEach(b => b.classList.toggle("active", b === btn));
+    // convert stored display-unit configs so the underlying physical scenario is unchanged
+    PARAM_DEFS.forEach(p => {
+      if (p.kind === "deg" || p.kind === "pct") return;
+      const cfg = paramConfigs[p.id];
+      const siLock = LP.toSI(p.kind, cfg.lock, oldSys);
+      const siMin = LP.toSI(p.kind, cfg.min, oldSys);
+      const siMax = LP.toSI(p.kind, cfg.max, oldSys);
+      cfg.lock = round(LP.fromSI(p.kind, siLock, sys));
+      cfg.min = round(LP.fromSI(p.kind, siMin, sys));
+      cfg.max = round(LP.fromSI(p.kind, siMax, sys));
+    });
+    refreshLengthTags();
+    renderParamTable();
+    if (lastRun) runSweep(); // refresh displayed results in the new units
+  });
+
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute("data-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", !cur ? (prefersDark ? "light" : "dark") : (cur === "dark" ? "light" : "dark"));
+    if (lastRun) drawScatter();
+  });
+
+  function round(v) { return Math.round(v * 10000) / 10000; }
+
+  // ---------- sweep engine ----------
+  let lastRun = null; // { samples: feasible[], generated, elapsedMs, config snapshot }
+
+  function runSweep() {
+    const n = clampInt(document.getElementById("nSamples").value, 10, 50000, 2000);
+    const seed = parseInt(document.getElementById("seed").value, 10) || 12345;
+    const rand = window.SharedPRNG.mulberry32(seed);
+    const t0 = performance.now();
+
+    const maxDTheta = clampInt(document.getElementById("cMaxDTheta").value, 1, 150, 150);
+    const maxGraw = parseFloat(document.getElementById("cMaxG").value);
+    const maxG = isFinite(maxGraw) ? maxGraw : Infinity;
+    const maxTravelRaw = parseFloat(document.getElementById("cMaxTravel").value);
+    const maxTravelSI = isFinite(maxTravelRaw) ? LP.toSI("length", maxTravelRaw, sys) : Infinity;
+    const targetFlRaw = parseFloat(document.getElementById("cTargetFl").value);
+    const targetFlSI = isFinite(targetFlRaw) && targetFlRaw > 0 ? LP.toSI("force", targetFlRaw, sys) : 0;
+
+    const all = [];
+    for (let i = 0; i < n; i++) {
+      const input = { springMode };
+      PARAM_DEFS.forEach(p => {
+        if (p.springMode && p.springMode !== springMode) return;
+        const cfg = paramConfigs[p.id];
+        const displayVal = cfg.mode === "lock" ? cfg.lock : window.SharedPRNG.uniform(rand, cfg.min, cfg.max);
+        input[p.id] = paramToSI(p, displayVal);
+      });
+      if (input.k === undefined) input.k = 0;
+      if (input.xBudget === undefined) input.xBudget = 0;
+
+      const r = LP.computeAll(input);
+      const FloadDevPct = targetFlSI > 0 && isFinite(r.Fl) ? Math.abs(r.Fl - targetFlSI) / targetFlSI * 100 : 0;
+      all.push({ input, r, FloadDevPct, score: 0 });
+    }
+
+    const feasible = all.filter(s =>
+      s.r.feasible &&
+      s.r.dThetaDeg <= maxDTheta &&
+      s.r.aMaxG <= maxG &&
+      s.r.totalTravel <= maxTravelSI
+    );
+
+    // composite scoring
+    const activeMetrics = METRICS.filter(m => weights[m.id] > 0 && (m.id !== "FloadDevPct" || targetFlSI > 0));
+    const ranges = {};
+    activeMetrics.forEach(m => {
+      let lo = Infinity, hi = -Infinity;
+      feasible.forEach(s => { const v = m.get(s); if (v < lo) lo = v; if (v > hi) hi = v; });
+      ranges[m.id] = { lo, hi };
+    });
+    const totalWeight = activeMetrics.reduce((a, m) => a + weights[m.id], 0) || 1;
+    feasible.forEach(s => {
+      let score = 0;
+      activeMetrics.forEach(m => {
+        const v = m.get(s);
+        const { lo, hi } = ranges[m.id];
+        const norm = hi > lo ? (v - lo) / (hi - lo) : 0;
+        score += weights[m.id] * (1 - norm);
+      });
+      s.score = score / totalWeight;
+    });
+    feasible.sort((a, b) => b.score - a.score); // native O(n log n) sort
+
+    const elapsedMs = performance.now() - t0;
+    lastRun = { feasible, generated: n, elapsedMs, activeMetrics };
+    renderSummary();
+    renderResultsTable("score", "desc");
+    populateAxisPickers();
+    drawScatter();
+    document.getElementById("emptyNote").style.display = "none";
+  }
+
+  function clampInt(v, lo, hi, dflt) {
+    const n = parseInt(v, 10);
+    if (!isFinite(n)) return dflt;
+    return Math.max(lo, Math.min(hi, n));
+  }
+
+  document.getElementById("runBtn").addEventListener("click", runSweep);
+  document.getElementById("randomSeedBtn").addEventListener("click", () => {
+    document.getElementById("seed").value = Math.floor(Math.random() * 2147483647);
+  });
+
+  // ---------- summary ----------
+  function renderSummary() {
+    const strip = document.getElementById("summaryStrip");
+    const best = lastRun.feasible[0];
+    strip.innerHTML = `
+      <div class="stat"><div class="label">Generated</div><div class="value">${lastRun.generated.toLocaleString()}</div></div>
+      <div class="stat"><div class="label">Feasible</div><div class="value">${lastRun.feasible.length.toLocaleString()} <span class="unit">/ ${lastRun.generated.toLocaleString()}</span></div></div>
+      <div class="stat accent"><div class="label">Best score</div><div class="value">${best ? best.score.toFixed(4) : "—"}</div></div>
+      <div class="stat"><div class="label">Compute time</div><div class="value">${lastRun.elapsedMs.toFixed(1)} <span class="unit">ms</span></div></div>
+    `;
+  }
+
+  // ---------- results table ----------
+  const TABLE_COLS = [
+    { id: "rank", label: "#", get: (s, i) => i + 1, dec: 0 },
+    { id: "score", label: "Score", get: s => s.score, dec: 4 },
+    { id: "L1", label: "L1", get: s => paramFromSI(PARAM_DEFS[0], s.input.L1), dec: 3 },
+    { id: "L2", label: "L2", get: s => paramFromSI(PARAM_DEFS[1], s.input.L2), dec: 3 },
+    { id: "beta", label: "β", get: s => s.input.beta, dec: 1 },
+    { id: "Fe", label: "Fe", get: s => paramFromSI(PARAM_DEFS[3], s.input.Fe), dec: 1 },
+    { id: "me", label: "me", get: s => paramFromSI(PARAM_DEFS[4], s.input.me), dec: 3 },
+    { id: "ve", label: "ve", get: s => paramFromSI(PARAM_DEFS[5], s.input.ve), dec: 1 },
+    { id: "ml", label: "ml", get: s => paramFromSI(PARAM_DEFS[6], s.input.ml), dec: 3 },
+    { id: "eta", label: "η%", get: s => s.input.eta * 100, dec: 0 },
+    { id: "alphaEffort", label: "αe", get: s => s.input.alphaEffort, dec: 1 },
+    { id: "alphaLoad", label: "αl", get: s => s.input.alphaLoad, dec: 1 },
+    { id: "Fl", label: "F_load", get: s => LP.fromSI("force", s.r.Fl, sys), dec: 2 },
+    { id: "sE", label: "s_e", get: s => LP.fromSI("length", s.r.sE, sys), dec: 3 },
+    { id: "xMax", label: "x_max", get: s => LP.fromSI("length", s.r.xMax, sys), dec: 3 },
+    { id: "vEffortHome", label: "v_e,home", get: s => LP.fromSI("velocity", s.r.vEffortHome, sys), dec: 3 },
+    { id: "vLoadHome", label: "v_l,home", get: s => LP.fromSI("velocity", s.r.vLoadHome, sys), dec: 3 },
+    { id: "totalTravel", label: "Total travel", get: s => LP.fromSI("length", s.r.totalTravel, sys), dec: 3 }
+  ];
+  const TABLE_LIMIT = 100;
+  let sortState = { key: "score", dir: "desc" };
+
+  function renderResultsTable() {
+    const table = document.getElementById("resultsTable");
+    const thead = table.querySelector("thead tr");
+    thead.innerHTML = "";
+    TABLE_COLS.forEach(col => {
+      const th = document.createElement("th");
+      th.className = "sortable";
+      th.textContent = col.label;
+      if (sortState.key === col.id) {
+        const arrow = document.createElement("span");
+        arrow.className = "arrow";
+        arrow.textContent = sortState.dir === "desc" ? "▾" : "▴";
+        th.appendChild(arrow);
+      }
+      th.addEventListener("click", () => {
+        if (sortState.key === col.id) sortState.dir = sortState.dir === "desc" ? "asc" : "desc";
+        else sortState = { key: col.id, dir: "desc" };
+        renderResultsTable();
+      });
+      thead.appendChild(th);
+    });
+
+    const col = TABLE_COLS.find(c => c.id === sortState.key);
+    const sorted = lastRun.feasible.slice().sort((a, b) => {
+      const va = col.get(a, 0), vb = col.get(b, 0);
+      return sortState.dir === "desc" ? vb - va : va - vb;
+    });
+    const paretoIdxSet = lastRun.paretoIndexSet || new Set();
+    const originalIndex = new Map(lastRun.feasible.map((s, i) => [s, i]));
+
+    const tbody = table.querySelector("tbody");
+    tbody.innerHTML = "";
+    sorted.slice(0, TABLE_LIMIT).forEach((s) => {
+      const tr = document.createElement("tr");
+      const isPareto = paretoIdxSet.has(originalIndex.get(s));
+      if (isPareto) tr.classList.add("pareto-row");
+      TABLE_COLS.forEach(c => {
+        const td = document.createElement("td");
+        td.className = "val";
+        const v = c.get(s, originalIndex.get(s));
+        td.textContent = isFinite(v) ? v.toFixed(c.dec) : "—";
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    document.getElementById("tableLimitLabel").textContent = Math.min(TABLE_LIMIT, lastRun.feasible.length);
+  }
+
+  // ---------- scatter + pareto ----------
+  const axisXSel = document.getElementById("axisX");
+  const axisYSel = document.getElementById("axisY");
+  function populateAxisPickers() {
+    const opts = METRICS.filter(m => m.id !== "FloadDevPct" || lastRun.activeMetrics.some(a => a.id === "FloadDevPct") || true)
+      .map(m => `<option value="${m.id}">${m.label}</option>`).join("");
+    axisXSel.innerHTML = opts; axisYSel.innerHTML = opts;
+    axisXSel.value = "sE"; axisYSel.value = "vLoadHome";
+  }
+  axisXSel.addEventListener("change", () => { computePareto(); renderResultsTable(); drawScatter(); });
+  axisYSel.addEventListener("change", () => { computePareto(); renderResultsTable(); drawScatter(); });
+
+  function computePareto() {
+    if (!lastRun) return;
+    const mx = METRICS.find(m => m.id === axisXSel.value);
+    const my = METRICS.find(m => m.id === axisYSel.value);
+    const pts = lastRun.feasible.map((s, i) => ({ i, x: mx.get(s), y: my.get(s) }));
+    pts.sort((a, b) => a.x - b.x); // O(n log n)
+    let bestY = Infinity;
+    const paretoSet = new Set();
+    for (const pt of pts) {
+      if (pt.y < bestY) { paretoSet.add(pt.i); bestY = pt.y; }
+    }
+    lastRun.paretoIndexSet = paretoSet;
+    document.getElementById("paretoCount").textContent = `${paretoSet.size} of ${lastRun.feasible.length} samples are Pareto-optimal for this pair`;
+  }
+
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function drawScatter() {
+    if (!lastRun) return;
+    computePareto();
+    const canvas = document.getElementById("scatter");
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round((rect.width || 860) * dpr);
+    canvas.height = Math.round(320 * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = rect.width || 860, H = 320;
+    ctx.clearRect(0, 0, W, H);
+
+    const mx = METRICS.find(m => m.id === axisXSel.value);
+    const my = METRICS.find(m => m.id === axisYSel.value);
+    const ink = cssVar("--ink"), inkFaint = cssVar("--ink-faint"), inkSoft = cssVar("--ink-soft"), accent = cssVar("--accent"), line = cssVar("--line");
+
+    const pad = { l: 56, r: 20, t: 16, b: 40 };
+    const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+
+    const xs = lastRun.feasible.map(mx.get), ys = lastRun.feasible.map(my.get);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const sx = v => pad.l + (xMax > xMin ? (v - xMin) / (xMax - xMin) : 0.5) * plotW;
+    const sy = v => pad.t + plotH - (yMax > yMin ? (v - yMin) / (yMax - yMin) : 0.5) * plotH;
+
+    // axes
+    ctx.strokeStyle = line; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + plotH); ctx.lineTo(pad.l + plotW, pad.t + plotH); ctx.stroke();
+    ctx.fillStyle = inkFaint; ctx.font = "10.5px " + cssVar("--font-mono");
+    ctx.fillText(fmtAxisVal(mx, xMin), pad.l, pad.t + plotH + 14);
+    ctx.fillText(fmtAxisVal(mx, xMax), pad.l + plotW - 30, pad.t + plotH + 14);
+    ctx.save(); ctx.translate(12, pad.t + plotH); ctx.rotate(-Math.PI / 2);
+    ctx.fillText(fmtAxisVal(my, yMin), 0, 0); ctx.restore();
+    ctx.fillStyle = inkSoft; ctx.font = "11px " + cssVar("--font-mono");
+    ctx.fillText(mx.label + " →", pad.l + plotW / 2 - 40, H - 6);
+
+    // points
+    const paretoSet = lastRun.paretoIndexSet;
+    lastRun.feasible.forEach((s, i) => {
+      if (paretoSet.has(i)) return; // draw non-pareto first, pareto on top
+      const px = sx(mx.get(s)), py = sy(my.get(s));
+      ctx.fillStyle = inkFaint;
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // pareto frontier line + points
+    const frontierPts = Array.from(paretoSet).map(i => ({ x: mx.get(lastRun.feasible[i]), y: my.get(lastRun.feasible[i]) }));
+    frontierPts.sort((a, b) => a.x - b.x);
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    frontierPts.forEach((p, i) => { const px = sx(p.x), py = sy(p.y); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+    ctx.stroke();
+    frontierPts.forEach(p => {
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3.2, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  function fmtAxisVal(m, v) {
+    const val = fmtMetric(m.kind, v);
+    return (isFinite(val) ? val.toFixed(2) : "—") + " " + metricUnit(m.kind);
+  }
+
+  // ---------- export ----------
+  const EXPORT_COLS = TABLE_COLS.filter(c => c.id !== "rank");
+  function buildExportRows(samples) {
+    const headers = ["rank", ...EXPORT_COLS.map(c => c.label), "pareto_optimal_current_axes"];
+    const paretoSet = lastRun.paretoIndexSet || new Set();
+    const originalIndex = new Map(lastRun.feasible.map((s, i) => [s, i]));
+    const rows = samples.map((s, idx) => [
+      idx + 1,
+      ...EXPORT_COLS.map(c => Number(c.get(s, originalIndex.get(s)).toFixed(6))),
+      paretoSet.has(originalIndex.get(s)) ? "yes" : "no"
+    ]);
+    return { headers, rows };
+  }
+
+  document.getElementById("exportCsvBtn").addEventListener("click", () => {
+    if (!lastRun) return;
+    computePareto();
+    const { headers, rows } = buildExportRows(lastRun.feasible);
+    window.SharedExport.downloadCSV(`lever-sweep-${Date.now()}.csv`, headers, rows);
+  });
+  document.getElementById("exportXlsxBtn").addEventListener("click", () => {
+    if (!lastRun) return;
+    computePareto();
+    const { headers, rows } = buildExportRows(lastRun.feasible);
+    window.SharedExport.downloadXLSX(`lever-sweep-${Date.now()}.xlsx`, "Sweep Results", headers, rows);
+  });
+
+  // ---------- persistence (IndexedDB) ----------
+  const idb = new window.SharedIDB.Store("clement-math-lever-optimizer", "runs");
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+    if (!lastRun) return;
+    computePareto();
+    const name = document.getElementById("saveName").value.trim() || `Run ${new Date().toLocaleString()}`;
+    const top = lastRun.feasible.slice(0, 500);
+    const { headers, rows } = buildExportRows(top);
+    await idb.put({
+      name, timestamp: Date.now(),
+      generated: lastRun.generated, feasibleCount: lastRun.feasible.length,
+      bestScore: lastRun.feasible[0] ? lastRun.feasible[0].score : null,
+      headers, rows
+    });
+    document.getElementById("saveName").value = "";
+    renderSavedRuns();
+  });
+
+  async function renderSavedRuns() {
+    const list = document.getElementById("savedRunsList");
+    let runs;
+    try { runs = await idb.getAll(); } catch (e) { list.innerHTML = `<p class="note">IndexedDB unavailable in this context (${e.message}). Saved runs won't persist here — export CSV/.xlsx instead.</p>`; return; }
+    if (!runs.length) { list.innerHTML = `<p class="note">No saved runs yet.</p>`; return; }
+    runs.sort((a, b) => b.timestamp - a.timestamp);
+    list.innerHTML = "";
+    runs.forEach(run => {
+      const div = document.createElement("div");
+      div.className = "saved-run";
+      div.innerHTML = `
+        <div class="meta"><strong>${escapeHtml(run.name)}</strong><br>${new Date(run.timestamp).toLocaleString()} · ${run.feasibleCount}/${run.generated} feasible · best ${run.bestScore !== null ? run.bestScore.toFixed(4) : "—"}</div>
+        <div class="actions">
+          <button data-act="csv">CSV</button>
+          <button data-act="xlsx">XLSX</button>
+          <button data-act="del">Delete</button>
+        </div>`;
+      div.querySelector('[data-act="csv"]').addEventListener("click", () => {
+        window.SharedExport.downloadCSV(`${slug(run.name)}.csv`, run.headers, run.rows);
+      });
+      div.querySelector('[data-act="xlsx"]').addEventListener("click", () => {
+        window.SharedExport.downloadXLSX(`${slug(run.name)}.xlsx`, "Sweep Results", run.headers, run.rows);
+      });
+      div.querySelector('[data-act="del"]').addEventListener("click", async () => {
+        await idb.delete(run.id);
+        renderSavedRuns();
+      });
+      list.appendChild(div);
+    });
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+  function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "run"; }
+
+  // ---------- init ----------
+  renderParamTable();
+  renderWeightRows();
+  refreshLengthTags();
+  renderSavedRuns();
+})();
+</script>
+</body>
+</html>

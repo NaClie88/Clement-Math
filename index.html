@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clement-Math — Calculator Toolkit</title>
+<link rel="stylesheet" href="shared/theme.css" />
+<style>
+  .tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .tool-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; text-decoration: none; display: block; transition: border-color 0.15s;
+  }
+  .tool-card:hover { border-color: var(--accent); }
+  .tool-card .tag {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .tool-card h2 { font-size: 17px; margin: 6px 0 8px; color: var(--ink); }
+  .tool-card p { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; line-height: 1.5; }
+  .tool-card .links { display: flex; gap: 10px; }
+  .tool-card .links span {
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
+  }
+  .layout-single { max-width: 900px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="wrap layout-single">
+
+  <header class="top" style="border-bottom: 2px solid var(--line-strong);">
+    <div class="title-block">
+      <div class="eyebrow">Clement-Math</div>
+      <h1>Calculator Toolkit</h1>
+      <p class="sub">Math calculators and associated documentation, one design problem per subfolder. Each tool is a self-contained page — open it directly, no build step, no account.</p>
+    </div>
+    <div class="top-controls">
+      <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
+    </div>
+  </header>
+
+  <div class="tool-grid">
+    <a class="tool-card" href="class3-lever-calculator/index.html">
+      <div class="tag">Mechanism design</div>
+      <h2>Bent Class-3 Lever — Shock Absorber</h2>
+      <p>Force, travel, and energy sizing for a class-3 lever bent at the effort point, driving a load mass into a spring — plus a dead-center return-stroke analysis to minimize the home-stop impact.</p>
+      <div class="links"><span>index.html — calculator</span></div>
+    </a>
+    <a class="tool-card" href="class3-lever-calculator/optimizer.html">
+      <div class="tag">Design space explorer</div>
+      <h2>Lever Sweep &amp; Optimizer</h2>
+      <p>Monte Carlo parameter sweep over the same lever model: lock what's fixed, range what's open, rank by a weighted objective, inspect the Pareto front, save runs, export to CSV/.xlsx.</p>
+      <div class="links"><span>optimizer.html — sweep tool</span></div>
+    </a>
+  </div>
+
+</div>
+<script>
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute("data-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", !cur ? (prefersDark ? "light" : "dark") : (cur === "dark" ? "light" : "dark"));
+  });
+</script>
+</body>
+</html>

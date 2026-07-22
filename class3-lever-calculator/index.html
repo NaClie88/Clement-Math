@@ -4,270 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Bent Class-3 Lever — Shock Absorber Calculator</title>
-<style>
-  :root {
-    --bg: #e7eaec;
-    --bg-grid: #d9dee1;
-    --surface: #f5f6f7;
-    --surface-2: #dfe3e5;
-    --ink: #182024;
-    --ink-soft: #55626b;
-    --ink-faint: #7c8790;
-    --line: #c7cdd1;
-    --line-strong: #a9b1b6;
-    --accent: #a8551f;
-    --accent-ink: #fff8f2;
-    --accent-soft: #a8551f1a;
-    --ok: #2f6f47;
-    --ok-soft: #2f6f4718;
-    --danger: #a8331f;
-    --danger-soft: #a8331f18;
-    --focus: #2b6cb0;
-    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Consolas", "Liberation Mono", monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  :root[data-theme="dark"] {
-    --bg: #10151a;
-    --bg-grid: #161d23;
-    --surface: #1a2129;
-    --surface-2: #212a33;
-    --ink: #e8edf0;
-    --ink-soft: #9aabb5;
-    --ink-faint: #6c7c86;
-    --line: #2c3844;
-    --line-strong: #3d4b58;
-    --accent: #e08a48;
-    --accent-ink: #1a1006;
-    --accent-soft: #e08a4826;
-    --ok: #5cb47f;
-    --ok-soft: #5cb47f22;
-    --danger: #e2685a;
-    --danger-soft: #e2685a22;
-    --focus: #6ba9e0;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #10151a;
-      --bg-grid: #161d23;
-      --surface: #1a2129;
-      --surface-2: #212a33;
-      --ink: #e8edf0;
-      --ink-soft: #9aabb5;
-      --ink-faint: #6c7c86;
-      --line: #2c3844;
-      --line-strong: #3d4b58;
-      --accent: #e08a48;
-      --accent-ink: #1a1006;
-      --accent-soft: #e08a4826;
-      --ok: #5cb47f;
-      --ok-soft: #5cb47f22;
-      --danger: #e2685a;
-      --danger-soft: #e2685a22;
-      --focus: #6ba9e0;
-    }
-  }
-
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background:
-      linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0/100% 28px,
-      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0/28px 100%,
-      var(--bg);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    line-height: 1.45;
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-  }
-  ::selection { background: var(--accent-soft); }
-
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 22px 60px; }
-
-  /* ---------- header ---------- */
-  header.top {
-    display: flex; flex-wrap: wrap; gap: 16px;
-    align-items: flex-end; justify-content: space-between;
-    padding-bottom: 18px; margin-bottom: 22px;
-    border-bottom: 2px solid var(--line-strong);
-  }
-  .title-block .eyebrow {
-    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--accent); font-weight: 600;
-  }
-  h1 {
-    font-family: var(--font-mono); font-weight: 700;
-    font-size: clamp(20px, 2.6vw, 28px);
-    letter-spacing: 0.01em; margin: 4px 0 6px; text-wrap: balance;
-    color: var(--ink);
-  }
-  .title-block p.sub {
-    margin: 0; color: var(--ink-soft); font-size: 13.5px; max-width: 60ch;
-  }
-  .top-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-
-  .segmented {
-    display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px;
-    overflow: hidden; font-family: var(--font-mono); font-size: 12.5px;
-    background: var(--surface);
-  }
-  .segmented button {
-    border: none; background: transparent; color: var(--ink-soft);
-    padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: inherit;
-    letter-spacing: 0.03em;
-  }
-  .segmented button.active { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
-  .segmented button:not(.active):hover { background: var(--surface-2); color: var(--ink); }
-  .segmented button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-
-  .theme-btn {
-    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft);
-    border-radius: 7px; padding: 8px 12px; font-family: var(--font-mono); font-size: 12.5px;
-    cursor: pointer; letter-spacing: 0.03em;
-  }
-  .theme-btn:hover { color: var(--ink); }
-  .theme-btn:focus-visible { outline: 2px solid var(--focus); }
-
-  /* ---------- layout ---------- */
-  .layout { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 20px; align-items: start; }
-  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
-
-  .col { display: flex; flex-direction: column; gap: 16px; }
-
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    padding: 16px 16px 18px;
-  }
-  .card > h2 {
-    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .card > h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  .card > h2 .n { color: var(--accent); }
-
-  .field-row { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; margin-bottom: 12px; }
-  .field-row:last-child { margin-bottom: 0; }
-  .field-row label {
-    font-size: 13px; color: var(--ink); display: flex; flex-direction: column; gap: 2px;
-  }
-  .field-row label .hint { font-size: 11.2px; color: var(--ink-faint); font-weight: 400; }
-  .field-row .input-unit {
-    display: flex; align-items: center; gap: 6px;
-  }
-  input[type="number"], input[type="range"] { font-family: var(--font-mono); }
-  input[type="number"] {
-    width: 104px; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--line-strong);
-    background: var(--surface-2); color: var(--ink); font-size: 13.5px; text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  input[type="number"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .unit-tag {
-    font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); min-width: 34px;
-  }
-  input[type="range"] {
-    width: 100%; accent-color: var(--accent); height: 4px;
-  }
-  .angle-row { grid-template-columns: 1fr; }
-  .angle-row .slider-line { display: flex; align-items: center; gap: 10px; }
-  .angle-row .slider-line input[type="number"] { width: 68px; }
-
-  .radio-toggle { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-  .radio-toggle label {
-    display: flex; gap: 8px; align-items: flex-start; font-size: 12.8px; color: var(--ink-soft);
-    cursor: pointer;
-  }
-  .radio-toggle input { margin-top: 3px; accent-color: var(--accent); }
-  .radio-toggle strong { color: var(--ink); }
-
-  details.advanced { margin-top: 2px; }
-  details.advanced > summary {
-    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--ink-faint); cursor: pointer; list-style: none;
-    display: flex; align-items: center; gap: 6px; padding: 4px 0;
-  }
-  details.advanced > summary::-webkit-details-marker { display: none; }
-  details.advanced > summary::before { content: "▸"; color: var(--accent); font-size: 10px; }
-  details.advanced[open] > summary::before { content: "▾"; }
-  details.advanced .field-row { margin-top: 12px; }
-
-  /* ---------- diagram ---------- */
-  .diagram-card { padding: 0; overflow: hidden; }
-  .diagram-card h2 { margin: 16px 16px 10px; }
-  canvas#lever { width: 100%; height: 340px; display: block; background: var(--surface-2); }
-  .diagram-legend {
-    display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 16px 16px;
-    font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);
-  }
-  .diagram-legend .item { display: flex; align-items: center; gap: 6px; }
-  .diagram-legend .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-
-  /* ---------- status chips ---------- */
-  .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-  .chip {
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
-    padding: 5px 10px; border-radius: 100px; border: 1px solid transparent;
-  }
-  .chip.ok { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-  .chip.warn { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
-
-  /* ---------- output stat grid ---------- */
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-  .stat {
-    background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px;
-    padding: 10px 12px;
-  }
-  .stat .label { font-size: 11px; color: var(--ink-faint); letter-spacing: 0.02em; }
-  .stat .value {
-    font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--ink);
-    font-variant-numeric: tabular-nums; margin-top: 2px;
-  }
-  .stat .value .unit { font-size: 12px; font-weight: 500; color: var(--ink-soft); margin-left: 3px; }
-  .stat.accent .value { color: var(--accent); }
-
-  table.spec {
-    width: 100%; border-collapse: collapse; font-size: 13px;
-  }
-  table.spec th {
-    text-align: left; font-family: var(--font-mono); font-size: 10.8px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
-    padding: 6px 10px; border-bottom: 1px solid var(--line-strong);
-  }
-  table.spec td {
-    padding: 8px 10px; border-bottom: 1px solid var(--line);
-    font-variant-numeric: tabular-nums;
-  }
-  table.spec td.val { font-family: var(--font-mono); text-align: right; color: var(--ink); font-weight: 600; }
-  table.spec td.unit { font-family: var(--font-mono); color: var(--ink-faint); width: 46px; }
-  table.spec tr:last-child td { border-bottom: none; }
-  .table-wrap { overflow-x: auto; }
-
-  .note {
-    font-size: 12.2px; color: var(--ink-soft); margin-top: 12px; line-height: 1.55;
-  }
-  .note code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
-
-  footer.methodology {
-    margin-top: 22px; border-top: 2px solid var(--line-strong); padding-top: 16px;
-  }
-  footer.methodology h2 {
-    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--ink-faint); margin: 0 0 12px;
-  }
-  footer.methodology .grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;
-  }
-  footer.methodology h3 {
-    font-size: 13px; margin: 0 0 6px; color: var(--ink);
-  }
-  footer.methodology p, footer.methodology li { font-size: 12.6px; color: var(--ink-soft); margin: 4px 0; }
-  footer.methodology ul { margin: 6px 0; padding-left: 18px; }
-  footer.methodology .formula {
-    font-family: var(--font-mono); font-size: 12px; background: var(--surface-2);
-    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0;
-    color: var(--ink); overflow-x: auto;
-  }
-</style>
+<link rel="stylesheet" href="../shared/theme.css" />
 </head>
 <body>
 <div class="wrap">
@@ -321,21 +58,21 @@
       <div class="card">
         <h2><span class="n">02</span> Effort Side (Impact In)</h2>
         <div class="field-row">
-          <label>Design effort force (F<sub>e</sub>)<span class="hint">max force the structure is rated to see at the effort point</span></label>
+          <label><span class="label-text">Design effort force (F<sub>e</sub>)</span><span class="hint">max force the structure is rated to see at the effort point</span></label>
           <div class="input-unit">
             <input type="number" id="Fe" step="0.1" />
             <span class="unit-tag" data-u="force"></span>
           </div>
         </div>
         <div class="field-row">
-          <label>Effort mass (m<sub>e</sub>)<span class="hint">moving mass delivering the impact</span></label>
+          <label><span class="label-text">Effort mass (m<sub>e</sub>)</span><span class="hint">moving mass delivering the impact</span></label>
           <div class="input-unit">
             <input type="number" id="me" step="0.01" />
             <span class="unit-tag" data-u="mass"></span>
           </div>
         </div>
         <div class="field-row">
-          <label>Effort mass incoming velocity (v<sub>e</sub>)<span class="hint">speed at first contact with the effort point</span></label>
+          <label><span class="label-text">Effort mass incoming velocity (v<sub>e</sub>)</span><span class="hint">speed at first contact with the effort point</span></label>
           <div class="input-unit">
             <input type="number" id="ve" step="0.1" />
             <span class="unit-tag" data-u="velocity"></span>
@@ -346,7 +83,7 @@
       <div class="card">
         <h2><span class="n">03</span> Load Side &amp; Spring</h2>
         <div class="field-row">
-          <label>Load mass (m<sub>l</sub>)<span class="hint">mass carried down the linear bearing into the spring</span></label>
+          <label><span class="label-text">Load mass (m<sub>l</sub>)</span><span class="hint">mass carried down the linear bearing into the spring</span></label>
           <div class="input-unit">
             <input type="number" id="ml" step="0.01" />
             <span class="unit-tag" data-u="mass"></span>
@@ -389,21 +126,21 @@
         <h2><span class="n">04</span> Return Stroke — Home-Stop Alignment</h2>
         <p class="note" style="margin-top:-4px;">Assumes both masses ride their own linear bearing, pinned to the lever via a slotted (Scotch-yoke) coupling. Mounting a bearing axis parallel to its arm <em>at the home hard stop</em> drives that mass's return velocity to zero right at contact — see Methodology below.</p>
         <div class="field-row">
-          <label>Effort-axis offset from dead center (α<sub>e</sub>)<span class="hint">0° = effort bearing exactly aligned with L₁ at the hard stop</span></label>
+          <label><span class="label-text">Effort-axis offset from dead center (α<sub>e</sub>)</span><span class="hint">0° = effort bearing exactly aligned with L₁ at the hard stop</span></label>
           <div class="input-unit">
             <input type="number" id="alphaEffort" step="0.5" min="0" max="45" />
             <span class="unit-tag">deg</span>
           </div>
         </div>
         <div class="field-row">
-          <label>Load-axis offset from dead center (α<sub>l</sub>)<span class="hint">0° = load bearing exactly aligned with R at the hard stop</span></label>
+          <label><span class="label-text">Load-axis offset from dead center (α<sub>l</sub>)</span><span class="hint">0° = load bearing exactly aligned with R at the hard stop</span></label>
           <div class="input-unit">
             <input type="number" id="alphaLoad" step="0.5" min="0" max="45" />
             <span class="unit-tag">deg</span>
           </div>
         </div>
         <div class="field-row">
-          <label>Lever moment of inertia about F (I<sub>lever</sub>)<span class="hint">what's left spinning at contact once both masses are dead-centered</span></label>
+          <label><span class="label-text">Lever moment of inertia about F (I<sub>lever</sub>)</span><span class="hint">what's left spinning at contact once both masses are dead-centered</span></label>
           <div class="input-unit">
             <input type="number" id="ILever" step="0.01" />
             <span class="unit-tag" data-u="inertia"></span>
@@ -600,70 +337,12 @@ v_l,home = R·ω_home·sin(α_l)</div>
 
 </div>
 
+<script src="physics.js"></script>
 <script>
 (function () {
   "use strict";
 
-  // ---------- unit conversion constants ----------
-  const IN_TO_M = 0.0254;
-  const LBF_TO_N = 4.4482216153;
-  const LBM_TO_KG = 0.45359237;
-  const DEG_TO_RAD = Math.PI / 180;
-  const G = 9.80665;
-  const INERTIA_US_TO_SI = LBM_TO_KG * IN_TO_M * IN_TO_M; // lbm·in² -> kg·m²
-
-  const UNITS = {
-    us: { length: "in", force: "lbf", mass: "lb", velocity: "in/s", rate: "lbf/in", time: "s", inertia: "lbm·in²" },
-    si: { length: "mm", force: "N", mass: "kg", velocity: "m/s", rate: "N/mm", time: "s", inertia: "kg·m²" }
-  };
-
-  // conversion: value in display unit -> SI base (m, N, kg, m/s, N/m)
-  function toSI(kind, v, sys) {
-    if (v === "" || v === null || isNaN(v)) return 0;
-    v = parseFloat(v);
-    if (sys === "us") {
-      switch (kind) {
-        case "length": return v * IN_TO_M;
-        case "force": return v * LBF_TO_N;
-        case "mass": return v * LBM_TO_KG;
-        case "velocity": return v * IN_TO_M; // in/s -> m/s
-        case "rate": return v * LBF_TO_N / IN_TO_M; // lbf/in -> N/m
-        case "inertia": return v * INERTIA_US_TO_SI; // lbm·in² -> kg·m²
-      }
-    } else {
-      switch (kind) {
-        case "length": return v / 1000; // mm -> m
-        case "force": return v; // N
-        case "mass": return v; // kg
-        case "velocity": return v; // m/s
-        case "rate": return v * 1000; // N/mm -> N/m
-        case "inertia": return v; // kg·m²
-      }
-    }
-    return v;
-  }
-  function fromSI(kind, v, sys) {
-    if (sys === "us") {
-      switch (kind) {
-        case "length": return v / IN_TO_M;
-        case "force": return v / LBF_TO_N;
-        case "mass": return v / LBM_TO_KG;
-        case "velocity": return v / IN_TO_M;
-        case "rate": return v * IN_TO_M / LBF_TO_N;
-        case "inertia": return v / INERTIA_US_TO_SI;
-      }
-    } else {
-      switch (kind) {
-        case "length": return v * 1000;
-        case "force": return v;
-        case "mass": return v;
-        case "velocity": return v;
-        case "rate": return v / 1000;
-        case "inertia": return v;
-      }
-    }
-    return v;
-  }
+  const { IN_TO_M, LBF_TO_N, LBM_TO_KG, DEG_TO_RAD, G, INERTIA_US_TO_SI, UNITS, toSI, fromSI, clamp } = window.LeverPhysics;
 
   // ---------- state: canonical SI values ----------
   let sys = "us";
@@ -788,85 +467,11 @@ v_l,home = R·ω_home·sin(α_l)</div>
     drawDiagram(lastCompute);
   });
 
-  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
   // ---------- physics ----------
   let lastCompute = null;
 
   function computeAll() {
-    const { L1, L2, beta: betaDeg, Fe, me, ve, ml, k, xBudget, eta, springMode,
-      alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever } = state;
-    const beta = betaDeg * DEG_TO_RAD;
-    const R = Math.sqrt(Math.max(0, L1 * L1 + L2 * L2 - 2 * L1 * L2 * Math.cos(beta)));
-    const MA = R > 1e-9 ? L1 / R : NaN;
-    const Fl = Fe * MA;
-
-    const KEin = 0.5 * me * ve * ve;
-    const sE = Fe > 1e-9 ? KEin / Fe : 0;
-    const dTheta = L1 > 1e-9 ? sE / L1 : 0; // rad
-    const sL = R * dTheta;
-    const tE = ve > 1e-9 ? 2 * sE / ve : 0;
-
-    const energyToLoad = eta * KEin;
-    const vL = ml > 1e-9 ? Math.sqrt(2 * energyToLoad / ml) : 0;
-    const tL = vL > 1e-9 ? 2 * sL / vL : 0;
-
-    let kUsed, xMax;
-    if (springMode === "givenK") {
-      kUsed = k;
-      xMax = kUsed > 1e-9 ? vL * Math.sqrt(ml / kUsed) : 0;
-    } else {
-      xMax = xBudget;
-      kUsed = xMax > 1e-9 ? ml * vL * vL / (xMax * xMax) : 0;
-    }
-    const FspringMax = kUsed * xMax;
-    const tSpring = kUsed > 1e-9 ? (Math.PI / 2) * Math.sqrt(ml / kUsed) : 0;
-    const aMaxG = ml > 1e-9 ? (FspringMax / ml) / G : 0;
-    const totalTravel = sL + xMax;
-    const totalTime = tE + tL + tSpring;
-
-    let gamma = NaN;
-    if (L1 > 1e-9 && R > 1e-9) {
-      gamma = Math.acos(clamp((L1 * L1 + R * R - L2 * L2) / (2 * L1 * R), -1, 1));
-    }
-
-    const dThetaDeg = dTheta / DEG_TO_RAD;
-    const gammaDeg = gamma / DEG_TO_RAD;
-
-    // ---------- return stroke / home-stop impact ----------
-    const alphaEffort = alphaEffortDeg * DEG_TO_RAD;
-    const alphaLoad = alphaLoadDeg * DEG_TO_RAD;
-    const Ereturn = eta * eta * KEin;
-    const Ieff = ILever + me * L1 * L1 * Math.sin(alphaEffort) * Math.sin(alphaEffort)
-                        + ml * R * R * Math.sin(alphaLoad) * Math.sin(alphaLoad);
-    const omegaHome = Ieff > 1e-12 ? Math.sqrt(2 * Ereturn / Ieff) : NaN;
-    const vEffortHome = isFinite(omegaHome) ? L1 * omegaHome * Math.sin(alphaEffort) : NaN;
-    const vLoadHome = isFinite(omegaHome) ? R * omegaHome * Math.sin(alphaLoad) : NaN;
-    const omegaHomeRpm = isFinite(omegaHome) ? omegaHome * 60 / (2 * Math.PI) : NaN;
-    const deadCenter = alphaEffortDeg < 0.01 && alphaLoadDeg < 0.01;
-
-    const warnings = [];
-    if (L1 <= 0 || L2 <= 0) warnings.push("Arm length must be positive.");
-    if (!(betaDeg > 0 && betaDeg <= 180)) warnings.push("Bend angle must be between 0° and 180°.");
-    if (isFinite(MA) && MA >= 1) warnings.push("L₁/R ≥ 1 — this is no longer force-reducing like a typical class-3 ratio. Check L₁, L₂, β.");
-    if (dThetaDeg > 150) warnings.push("Required rotation exceeds 150° — verify this is mechanically achievable.");
-    if (R < 1e-6) warnings.push("Arm segments collapse onto each other at this bend angle — increase β.");
-
-    const returnWarnings = [];
-    if (Ieff <= 1e-12) {
-      returnWarnings.push("Enter a nonzero lever inertia — a massless lever with any dead-center offset gives an undefined spin rate.");
-    } else if (deadCenter) {
-      returnWarnings.push("DEAD CENTER — both masses return at 0 velocity; all return energy is lever spin.");
-    } else {
-      returnWarnings.push("Offset from dead center — residual return velocity present on the axis with α>0.");
-    }
-
-    return {
-      R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
-      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings,
-      Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings,
-      geom: { L1, L2, beta, alphaEffort, alphaLoad }
-    };
+    return window.LeverPhysics.computeAll(state);
   }
 
   function statusChip(text, ok) {
