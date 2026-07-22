@@ -9,8 +9,11 @@ any browser — no build step, no server, no external dependencies.
 Three pages, one physics engine:
 
 - **`index.html`** — single-point calculator: one set of inputs, full
-  breakdown of the outputs, live schematic, plus per-parameter testing
-  bounds with a one-at-a-time sensitivity view.
+  breakdown of the outputs, live schematic, per-parameter testing bounds
+  with a one-at-a-time sensitivity view, an optional spring wire stress/
+  buckling check, and a "Copy Link" button that round-trips the entire
+  configuration through the URL so a specific design can be shared or
+  bookmarked.
 - **`optimizer.html`** — Design Space Explorer: Monte Carlo sweep over the
   same model. Lock the parameters you've already fixed, give the rest a
   range, weight the objectives that matter for your build, and get back a
@@ -18,9 +21,9 @@ Three pages, one physics engine:
   which effort-force ranges they hold up across. Results save locally
   (IndexedDB) and export to CSV or a real `.xlsx`.
 - **`settings.html`** — one shared unit-preference set for every quantity
-  (length, force, mass, velocity, angle, spring rate, energy, moment of
-  inertia), applied instantly across both tools, plus a live self-test of
-  the conversion math itself.
+  (length, force, mass, velocity, angle, spring rate, stress, energy,
+  moment of inertia), applied instantly across both tools, plus a live
+  self-test of the conversion math itself.
 
 All three load `physics.js` (same formulas, one source of truth),
 `../shared/units.js` (unit conversion, one source of truth), and
@@ -195,6 +198,45 @@ one-at-a-time ("tornado") sensitivity check: which uncertain input actually
 moves the result, not a worst-case combination of all of them together. For
 that, use the full Monte Carlo sweep in `optimizer.html`.
 
+## Spring wire & geometry check (card 06, optional)
+
+Spring rate alone can't tell you whether a real spring survives. Fill in
+wire diameter, mean coil diameter, active coil count, and free length (plus
+a material — the dropdown fills in a shear modulus and density, but leaves
+tensile strength for you to confirm against your actual wire's datasheet)
+and the panel checks:
+
+- **Spring index** `C = D/d`, flagged if outside the preferred 4–12 range
+  (below 4 is hard to coil; above 12 is prone to buckling and coil clash).
+- **Wahl-corrected wire shear stress**
+  `τ_max = 8·F_spring,max·D·K_w / (π·d³)`, where
+  `K_w = (4C−1)/(4C−4) + 0.615/C`, compared against a static allowable
+  (~45% of tensile strength, yield-based) and a conservative cyclic/fatigue
+  allowable (~30%) — reported as safety factors (>1 passes that check).
+- **Slenderness ratio** `L_free / D` — above 4, the spring needs a guide rod
+  or sleeve or it will buckle sideways instead of compressing straight.
+  This is the flag most directly worth watching if you're deciding whether
+  your hardware needs that guide rod.
+- **Solid height & available travel**, so you can see if the computed
+  spring travel (x_max) would bottom the spring out before absorbing the
+  full energy.
+- **Spring surge (natural) frequency**, as a sanity check against the
+  simple energy-balance model — if your impact is fast enough to approach
+  this frequency, the spring's own internal wave dynamics stop being
+  negligible and the simple SHM assumption breaks down.
+
+This card only appears once a wire diameter is entered — leave it blank to
+skip it entirely. See "Assumptions & limitations" below for what this check
+does and doesn't cover, and the sources behind the numbers.
+
+## Sharing a configuration
+
+The "🔗 Copy Link" button (top of `index.html`) encodes the entire current
+configuration — every input, the optional spring geometry, and any testing
+bounds — into the page's URL and copies it to your clipboard. Opening that
+link (in this browser or anyone else's) reproduces the exact same
+configuration, no account or server involved.
+
 ## Assumptions & limitations
 
 This is a lumped-parameter hand calculation for scoping bench-test hardware
@@ -213,12 +255,29 @@ This is a lumped-parameter hand calculation for scoping bench-test hardware
   return-stroke section additionally needs an explicit lever inertia
   (I_lever) since that's exactly what's left spinning once both masses are
   dead-centered.
-- The return-stroke model assumes a slotted/Scotch-yoke coupling
-  specifically. A simple connecting-rod link behaves similarly near dead
-  center but not identically — re-check with CAD if the offset angles are
-  large.
+- **The return-stroke dead-center math specifically models a slotted
+  (Scotch-yoke) coupling** between the lever and each mass — this is *not*
+  the only way to build this mechanism, and if your actual hardware
+  couples the lever to the masses differently (e.g. simple contact/push
+  rather than a slot that can also pull), the α_e/α_l "return velocity
+  vanishes at dead center" result doesn't directly transfer. If your masses
+  instead ride their own linear bearings independently and are driven back
+  by the spring alone rather than being kinematically pulled by the lever,
+  the return-stroke section's velocity formulas don't apply as written —
+  treat that section as describing one possible mechanism variant, not a
+  universal law, until a from-scratch analysis of your specific return-path
+  coupling gets added here.
 - The spring is assumed near-lossless (its own hysteresis isn't modeled
   separately; fold it into η if it's significant for your spring).
+- The spring wire check (card 06) is a scoping check, not a certified
+  design: the static/cyclic allowable-stress fractions (~45%/~30% of
+  tensile strength) are commonly cited rules of thumb, not a substitute for
+  your material's actual S-N fatigue curve if this spring sees many cycles;
+  tensile strength itself varies meaningfully with the exact wire diameter,
+  so the material dropdown's default is a conservative starting point, not
+  a rating — always confirm against your wire supplier's datasheet before
+  trusting a marginal safety factor. Shear modulus and density are much
+  more stable material constants and can be trusted with less scrutiny.
 
 ## Design Space Explorer (`optimizer.html`)
 

@@ -34,6 +34,7 @@
     </div>
     <div class="top-controls">
       <a class="units-btn" id="unitsLink" href="settings.html">⚙ UNITS: <span class="cur" id="unitsSummary">…</span></a>
+      <button class="theme-btn" id="copyLinkBtn" type="button">🔗 COPY LINK</button>
       <button class="theme-btn" id="themeToggle" type="button">◐ THEME</button>
     </div>
   </header>
@@ -136,7 +137,7 @@
           <div class="field-row">
             <label><span class="label-text">Efficiency (η)</span><span class="hint">lumps pivot friction, lever inertia, bearing drag. 1.0 = lossless</span></label>
             <div class="input-unit">
-              <input type="number" id="eta" step="1" min="10" max="100" />
+              <input type="number" id="eta" step="1" min="5" max="100" />
               <span class="unit-tag">%</span>
             </div>
           </div>
@@ -180,6 +181,55 @@
         </div>
       </div>
 
+      <div class="card">
+        <h2><span class="n">06</span> Spring Wire &amp; Geometry (optional)</h2>
+        <p class="note" style="margin-top:-6px;">Spring rate alone doesn't tell you if a real spring survives — fill this in to check wire stress, buckling, and coil-bind against the peak spring force already computed above. Leave wire diameter blank to skip.</p>
+        <div class="field-row">
+          <label><span class="label-text">Material</span><span class="hint">sets typical shear modulus &amp; density — tensile strength below is still yours to confirm</span></label>
+          <div class="input-unit">
+            <select id="springMaterial" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--ink); font-family:var(--font-sans); font-size:13px;">
+              <option value="music">Music Wire (ASTM A228)</option>
+              <option value="chromeVanadium">Chrome Vanadium (ASTM A231/A232)</option>
+              <option value="chromeSilicon">Chrome Silicon (ASTM A401)</option>
+              <option value="stainless302">Stainless Steel 302/304 (ASTM A313)</option>
+              <option value="phosphorBronze">Phosphor Bronze (ASTM B159)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Wire diameter (d)</span><span class="hint">blank = skip this whole check</span></label>
+          <div class="input-unit"><input type="number" id="wireDiameter" step="any" placeholder="—"><span class="unit-tag" data-u="length"></span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Mean coil diameter (D)</span><span class="hint">outer diameter minus one wire diameter</span></label>
+          <div class="input-unit"><input type="number" id="coilDiameter" step="any" placeholder="—"><span class="unit-tag" data-u="length"></span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Active coils (N<sub>a</sub>)</span><span class="hint">from the spring's spec sheet</span></label>
+          <div class="input-unit"><input type="number" id="activeCoils" step="0.25" placeholder="—"></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Free length</span><span class="hint">uncompressed spring length</span></label>
+          <div class="input-unit"><input type="number" id="freeLength" step="any" placeholder="—"><span class="unit-tag" data-u="length"></span></div>
+        </div>
+        <div class="field-row">
+          <label><span class="label-text">Ultimate tensile strength (S<sub>ut</sub>)</span><span class="hint">material dropdown fills a conservative typical value — replace with your wire's actual rated value for a real check, since Sut varies a lot with exact diameter</span></label>
+          <div class="input-unit"><input type="number" id="sut" step="any"><span class="unit-tag" data-u="stress"></span></div>
+        </div>
+        <details class="advanced">
+          <summary>Advanced — shear modulus &amp; density (auto-filled by material)</summary>
+          <div class="field-row">
+            <label><span class="label-text">Shear modulus (G)</span><span class="hint">stiffness of the wire material itself</span></label>
+            <div class="input-unit"><input type="number" id="shearModulus" step="any"><span class="unit-tag" data-u="stress"></span></div>
+          </div>
+          <div class="field-row">
+            <label><span class="label-text">Density (ρ)</span><span class="hint">for the spring-surge frequency check</span></label>
+            <div class="input-unit"><input type="number" id="wireDensity" step="any"><span class="unit-tag">kg/m³</span></div>
+          </div>
+        </details>
+      </div>
+
     </div>
 
     <!-- ============ OUTPUT COLUMN ============ -->
@@ -200,7 +250,7 @@
         <h2><span class="n">→</span> Status</h2>
         <div class="status-row" id="statusRow"></div>
 
-        <div class="stat-grid">
+        <div class="stat-grid" id="statGridStatus">
           <div class="stat accent">
             <div class="label">Load force (F<sub>l</sub>)</div>
             <div class="value" id="out_Fl">—</div>
@@ -222,7 +272,7 @@
 
       <div class="card">
         <h2><span class="n">→</span> Motion &amp; Energy</h2>
-        <div class="stat-grid">
+        <div class="stat-grid" id="statGridMotion">
           <div class="stat accent">
             <div class="label">Min. effort-side travel (s<sub>e</sub>)</div>
             <div class="value" id="out_se">—</div>
@@ -252,7 +302,7 @@
 
       <div class="card">
         <h2><span class="n">→</span> Spring Sizing</h2>
-        <div class="stat-grid">
+        <div class="stat-grid" id="statGridSpring">
           <div class="stat accent">
             <div class="label" id="lbl_xmax">Max. load-mass travel (x<sub>max</sub>)</div>
             <div class="value" id="out_xmax">—</div>
@@ -275,7 +325,7 @@
       <div class="card">
         <h2><span class="n">→</span> Return Stroke — Home-Stop Impact</h2>
         <div class="status-row" id="returnStatusRow"></div>
-        <div class="stat-grid">
+        <div class="stat-grid" id="statGridReturn">
           <div class="stat">
             <div class="label">Round-trip return energy (η²·KE<sub>in</sub>)</div>
             <div class="value" id="out_Ereturn">—</div>
@@ -308,6 +358,54 @@
         <h2><span class="n">±</span> Sensitivity Across Testing Bounds</h2>
         <p class="note" id="tornadoEmpty" style="margin-top:-6px;">Fill in a lower/upper bound for at least one parameter in card 05 to see how much it moves the key outputs.</p>
         <div id="tornadoBody"></div>
+      </div>
+
+      <div class="card" id="springCheckCard" style="display:none;">
+        <h2><span class="n">⚙</span> Spring Wire Check</h2>
+        <div class="status-row" id="springStatusRow"></div>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Spring index (C = D/d)</div>
+            <div class="value" id="out_springC">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Wahl correction factor (K<sub>w</sub>)</div>
+            <div class="value" id="out_springKw">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Rate from wire geometry</div>
+            <div class="value" id="out_springKcalc">—</div>
+          </div>
+          <div class="stat accent">
+            <div class="label">Peak wire shear stress (τ<sub>max</sub>)</div>
+            <div class="value" id="out_springTau">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Safety factor vs. static allowable</div>
+            <div class="value" id="out_springSFstatic">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Safety factor vs. cyclic allowable</div>
+            <div class="value" id="out_springSFcyclic">—</div>
+          </div>
+          <div class="stat accent">
+            <div class="label">Slenderness ratio (L<sub>free</sub>/D)</div>
+            <div class="value" id="out_springSlenderness">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Est. solid height</div>
+            <div class="value" id="out_springSolid">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Available travel before bind</div>
+            <div class="value" id="out_springAvail">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Spring surge frequency</div>
+            <div class="value" id="out_springSurge">—</div>
+          </div>
+        </div>
+        <p class="note">Safety factor = allowable ÷ actual — above 1.0 means it survives that check, below 1.0 means it won't. The static allowable assumes ~45% of tensile strength (yield-based); the cyclic figure conservatively derates to ~30% for repeated loading. Slenderness above 4 means the spring needs a guide rod or sleeve or it'll buckle sideways under load instead of compressing straight.</p>
       </div>
 
       <div class="card">
@@ -397,8 +495,6 @@ v_l,home = R·ω_home·sin(α_l)</div>
     L1: "length", L2: "length", Fe: "force", me: "mass", ve: "velocity",
     ml: "mass", k: "rate", xBudget: "length", ILever: "inertia"
   };
-  const ANGLE_IDS = { beta: "beta", maxDTheta: "maxDTheta", alphaEffort: "alphaEffort", alphaLoad: "alphaLoad" };
-
   function uOf(kind) { return unitPrefs[kind]; }
   function toSI(kind, v) { return SU.toSI(kind, parseFloat(v) || 0, uOf(kind)); }
   function fromSI(kind, v) { return SU.fromSI(kind, v, uOf(kind)); }
@@ -508,6 +604,88 @@ v_l,home = R·ω_home·sin(α_l)</div>
   window.addEventListener("focus", () => { unitPrefs = window.SharedUnitPrefs.load(); refreshUnitTags(); pushStateToInputs(); compute(); });
   window.addEventListener("storage", e => { if (e.key === window.SharedUnitPrefs.STORAGE_KEY) { unitPrefs = window.SharedUnitPrefs.load(); refreshUnitTags(); pushStateToInputs(); compute(); } });
 
+  // ---------- spring wire & geometry (optional check) ----------
+  // G and density are stable material constants (fairly high confidence);
+  // Sut is diameter-dependent in reality, so these are deliberately
+  // conservative starting points, not a substitute for the wire's actual
+  // datasheet — the UI says so and the field stays editable.
+  const SPRING_MATERIALS = {
+    music: { name: "Music Wire (ASTM A228)", G: 79.3e9, rho: 7850, Sut: 1590e6 },
+    chromeVanadium: { name: "Chrome Vanadium (ASTM A231/A232)", G: 77.2e9, rho: 7850, Sut: 1450e6 },
+    chromeSilicon: { name: "Chrome Silicon (ASTM A401)", G: 77.2e9, rho: 7850, Sut: 1500e6 },
+    stainless302: { name: "Stainless Steel 302/304 (ASTM A313)", G: 69.0e9, rho: 8000, Sut: 1300e6 },
+    phosphorBronze: { name: "Phosphor Bronze (ASTM B159)", G: 41.4e9, rho: 8860, Sut: 700e6 },
+    custom: { name: "Custom", G: 79.3e9, rho: 7850, Sut: 1500e6 }
+  };
+  const springState = { material: "music", wireDiameter: null, coilDiameter: null, activeCoils: null, freeLength: null, sut: null, shearModulus: null, wireDensity: null };
+  // apply the default material's presets once at startup
+  Object.assign(springState, { sut: SPRING_MATERIALS.music.Sut, shearModulus: SPRING_MATERIALS.music.G, wireDensity: SPRING_MATERIALS.music.rho });
+
+  document.getElementById("springMaterial").addEventListener("change", e => {
+    const mat = SPRING_MATERIALS[e.target.value];
+    springState.material = e.target.value;
+    springState.sut = mat.Sut; springState.shearModulus = mat.G; springState.wireDensity = mat.rho;
+    document.getElementById("sut").value = round(fromSI("stress", mat.Sut), 1);
+    document.getElementById("shearModulus").value = round(fromSI("stress", mat.G), 1);
+    document.getElementById("wireDensity").value = mat.rho;
+    compute();
+  });
+  ["wireDiameter", "coilDiameter"].forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      springState[id] = e.target.value === "" ? null : SU.toSI("length", parseFloat(e.target.value) || 0, uOf("length"));
+      compute();
+    });
+  });
+  document.getElementById("freeLength").addEventListener("input", e => {
+    springState.freeLength = e.target.value === "" ? null : SU.toSI("length", parseFloat(e.target.value) || 0, uOf("length"));
+    compute();
+  });
+  document.getElementById("activeCoils").addEventListener("input", e => {
+    springState.activeCoils = e.target.value === "" ? null : parseFloat(e.target.value) || 0;
+    compute();
+  });
+  ["sut", "shearModulus"].forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      springState[id === "sut" ? "sut" : "shearModulus"] = e.target.value === "" ? null : SU.toSI("stress", parseFloat(e.target.value) || 0, uOf("stress"));
+    });
+  });
+  document.getElementById("wireDensity").addEventListener("input", e => {
+    springState.wireDensity = e.target.value === "" ? null : parseFloat(e.target.value) || 0;
+  });
+
+  function computeSpringCheck(r) {
+    if (!springState.wireDiameter || !springState.coilDiameter || !springState.activeCoils || !springState.freeLength) return null;
+    return window.LeverPhysics.computeSpringCheck({
+      wireDiameter: springState.wireDiameter, coilDiameter: springState.coilDiameter,
+      activeCoils: springState.activeCoils, freeLength: springState.freeLength,
+      shearModulus: springState.shearModulus, density: springState.wireDensity, Sut: springState.sut,
+      FspringMax: r.FspringMax, kEntered: r.kUsed, xMax: r.xMax
+    });
+  }
+
+  function renderSpringCheck(r) {
+    const card = document.getElementById("springCheckCard");
+    const sc = computeSpringCheck(r);
+    if (!sc) { card.style.display = "none"; return; }
+    card.style.display = "";
+
+    const row = document.getElementById("springStatusRow");
+    row.innerHTML = "";
+    if (sc.warnings.length === 0) row.appendChild(statusChip("SPRING GEOMETRY OK", "ok"));
+    else sc.warnings.forEach(w => row.appendChild(statusChip(w, w.includes("guide rod") ? "warn" : (w.includes("exceeds the static") ? "warn" : "info"))));
+
+    setStat("out_springC", sc.C, "", 2);
+    setStat("out_springKw", sc.Kw, "", 3);
+    setStat("out_springKcalc", fromSI("rate", sc.kFromGeometry), SU.label("rate", uOf("rate")), 2);
+    setStat("out_springTau", fromSI("stress", sc.tauMax), SU.label("stress", uOf("stress")), 1);
+    setStat("out_springSFstatic", sc.safetyFactorStatic, "×", 2);
+    setStat("out_springSFcyclic", sc.safetyFactorCyclic, "×", 2);
+    setStat("out_springSlenderness", sc.slenderness, sc.needsGuideRod ? "⚠ guide rod needed" : "✓ self-supporting", 2);
+    setStat("out_springSolid", fromSI("length", sc.solidHeight), SU.label("length", uOf("length")), 3);
+    setStat("out_springAvail", fromSI("length", sc.availableTravel), SU.label("length", uOf("length")), 3);
+    setStat("out_springSurge", sc.fSurge, "Hz", 1);
+  }
+
   // ---------- testing bounds (per-parameter, display units) ----------
   const BOUNDS_PARAMS = [
     { id: "L1", label: "L₁", kind: "length" },
@@ -567,10 +745,8 @@ v_l,home = R·ω_home·sin(α_l)</div>
       const loSI = b.lo !== null ? boundToSI(p, b.lo) : state[p.id];
       const hiSI = b.hi !== null ? boundToSI(p, b.hi) : state[p.id];
       const lo = Math.min(loSI, hiSI), hi = Math.max(loSI, hiSI);
-      const inputLo = Object.assign({}, state, { [p.id]: lo });
-      const inputHi = Object.assign({}, state, { [p.id]: hi });
-      const rLo = window.LeverPhysics.computeAll(inputLo);
-      const rHi = window.LeverPhysics.computeAll(inputHi);
+      const rLo = window.LeverPhysics.computeAll(physicsInput({ [p.id]: lo }));
+      const rHi = window.LeverPhysics.computeAll(physicsInput({ [p.id]: hi }));
       return { param: p, rLo, rHi };
     });
     return rows;
@@ -616,13 +792,22 @@ v_l,home = R·ω_home·sin(α_l)</div>
   // ---------- physics ----------
   let lastCompute = null;
 
-  function computeAll() {
-    return window.LeverPhysics.computeAll(state);
+  // physics.js's contract names this field maxDThetaDeg; state.maxDTheta
+  // matches the DOM id instead, so every call into physics.js goes through
+  // this one mapping point rather than risking the two names drifting apart.
+  function physicsInput(overrides) {
+    return Object.assign({}, state, { maxDThetaDeg: state.maxDTheta }, overrides || {});
   }
 
-  function statusChip(text, ok) {
+  function computeAll() {
+    return window.LeverPhysics.computeAll(physicsInput());
+  }
+
+  function statusChip(text, level) {
+    // accepts "ok" | "warn" | "info", or a boolean for backward compat (true=ok, false=warn)
+    const cls = level === true ? "ok" : level === false ? "warn" : level;
     const span = document.createElement("span");
-    span.className = "chip " + (ok ? "ok" : "warn");
+    span.className = "chip " + cls;
     span.textContent = text;
     return span;
   }
@@ -646,6 +831,10 @@ v_l,home = R·ω_home·sin(α_l)</div>
     } else {
       r.warnings.forEach(w => statusRow.appendChild(statusChip(w, false)));
     }
+    ["statGridStatus", "statGridMotion", "statGridSpring"].forEach(id => {
+      document.getElementById(id).classList.toggle("unreliable", r.warnings.length > 0);
+    });
+    document.getElementById("statGridReturn").classList.toggle("unreliable", r.returnStatusLevel === "error");
 
     setStat("out_Fl", fromSI("force", r.Fl), SU.label("force", uOf("force")), 2);
     setStat("out_MA", r.MA, "", 3);
@@ -666,7 +855,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
 
     const returnStatusRow = document.getElementById("returnStatusRow");
     returnStatusRow.innerHTML = "";
-    r.returnWarnings.forEach(w => returnStatusRow.appendChild(statusChip(w, r.deadCenter && r.Ieff > 1e-12)));
+    r.returnWarnings.forEach(w => returnStatusRow.appendChild(statusChip(w, r.returnStatusLevel)));
 
     setStat("out_Ereturn", fromSI("energy", r.Ereturn), SU.label("energy", uOf("energy")), 4);
     setStat("out_Ieff", fromSI("inertia", r.Ieff), SU.label("inertia", uOf("inertia")), 6);
@@ -678,6 +867,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
     buildSummary(r);
     drawDiagram(r);
     renderTornado(computeSensitivity());
+    renderSpringCheck(r);
   }
 
   function buildSummary(r) {
@@ -701,6 +891,15 @@ v_l,home = R·ω_home·sin(α_l)</div>
       ["Effort mass return velocity at contact", fromSI("velocity", r.vEffortHome), SU.label("velocity", uOf("velocity")), 3],
       ["Load mass return velocity at contact", fromSI("velocity", r.vLoadHome), SU.label("velocity", uOf("velocity")), 3]
     ];
+    const sc = computeSpringCheck(r);
+    if (sc) {
+      rows.push(
+        ["Spring wire peak shear stress", fromSI("stress", sc.tauMax), SU.label("stress", uOf("stress")), 1],
+        ["Spring safety factor (static)", sc.safetyFactorStatic, "×", 2],
+        ["Spring safety factor (cyclic)", sc.safetyFactorCyclic, "×", 2],
+        ["Spring slenderness ratio — guide rod needed?", sc.slenderness, sc.needsGuideRod ? "YES" : "no", 2]
+      );
+    }
     const tbody = document.querySelector("#summaryTable tbody");
     tbody.innerHTML = "";
     rows.forEach(([label, val, unit, dec]) => {
@@ -747,6 +946,14 @@ v_l,home = R·ω_home·sin(α_l)</div>
     const W = rect.width || 900, H = 360;
     ctx.clearRect(0, 0, W, H);
 
+    const { L1, L2, beta } = r.geom;
+    if (![L1, L2, beta, r.dTheta].every(isFinite) || L1 <= 0 || L2 <= 0) {
+      ctx.fillStyle = cssVar("--ink-faint");
+      ctx.font = "12px " + cssVar("--font-mono");
+      ctx.fillText("Enter valid, positive arm lengths to see the schematic.", 20, H / 2);
+      return;
+    }
+
     const ink = cssVar("--ink");
     const inkFaint = cssVar("--ink-faint");
     const inkSoft = cssVar("--ink-soft");
@@ -754,9 +961,8 @@ v_l,home = R·ω_home·sin(α_l)</div>
     const ok = cssVar("--ok");
     const line = cssVar("--line-strong");
 
-    const { L1, L2, beta } = r.geom;
     const span = Math.max(L1 + L2, r.R || 0, 0.05);
-    const scale = (W * 0.30) / span;
+    const scale = isFinite(span) && span > 0 ? (W * 0.30) / span : 1;
 
     const railY = H * 0.66;
     const F = { x: W * 0.54, y: H * 0.16 };
@@ -893,7 +1099,63 @@ v_l,home = R·ω_home·sin(α_l)</div>
     ctx.closePath(); ctx.fill();
   }
 
+  // ---------- shareable permalink ----------
+  // Whole config (lever state + optional spring geometry + optional testing
+  // bounds) round-trips as one opaque base64 blob in a single query param,
+  // rather than one query param per field — robust to this file's field
+  // list growing over time without breaking old shared links.
+  function encodeConfig() {
+    const payload = { v: 1, state };
+    if (springState.wireDiameter) payload.springState = springState;
+    const hasBounds = Object.values(bounds).some(b => b.lo !== null || b.hi !== null);
+    if (hasBounds) payload.bounds = bounds;
+    const json = JSON.stringify(payload);
+    return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function decodeConfig(str) {
+    try {
+      let b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      return JSON.parse(decodeURIComponent(escape(atob(b64))));
+    } catch (e) { return null; }
+  }
+  document.getElementById("copyLinkBtn").addEventListener("click", async () => {
+    const url = new URL(location.href);
+    url.search = "";
+    url.searchParams.set("c", encodeConfig());
+    history.replaceState(null, "", url);
+    const btn = document.getElementById("copyLinkBtn");
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      const original = btn.textContent;
+      btn.textContent = "✓ COPIED";
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    } catch (e) {
+      prompt("Copy this link:", url.toString());
+    }
+  });
+  (function applyConfigFromURL() {
+    const c = new URLSearchParams(location.search).get("c");
+    if (!c) return;
+    const decoded = decodeConfig(c);
+    if (!decoded || !decoded.state) return;
+    Object.assign(state, decoded.state);
+    if (decoded.springState) Object.assign(springState, decoded.springState);
+    if (decoded.bounds) Object.assign(bounds, decoded.bounds);
+    document.querySelector('input[name="springMode"][value="' + state.springMode + '"]').checked = true;
+    document.getElementById("rowK").style.display = state.springMode === "givenK" ? "" : "none";
+    document.getElementById("rowX").style.display = state.springMode === "givenX" ? "" : "none";
+    document.getElementById("springMaterial").value = springState.material || "music";
+  })();
+
   // ---------- init ----------
+  document.getElementById("sut").value = round(fromSI("stress", springState.sut), 1);
+  document.getElementById("shearModulus").value = round(fromSI("stress", springState.shearModulus), 1);
+  document.getElementById("wireDensity").value = springState.wireDensity;
+  if (springState.wireDiameter) document.getElementById("wireDiameter").value = round(fromSI("length", springState.wireDiameter), 4);
+  if (springState.coilDiameter) document.getElementById("coilDiameter").value = round(fromSI("length", springState.coilDiameter), 4);
+  if (springState.activeCoils) document.getElementById("activeCoils").value = springState.activeCoils;
+  if (springState.freeLength) document.getElementById("freeLength").value = round(fromSI("length", springState.freeLength), 4);
   refreshUnitTags();
   pushStateToInputs();
   resizeCanvas();

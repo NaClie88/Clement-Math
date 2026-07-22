@@ -237,6 +237,7 @@
   }
   .chip.ok { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
   .chip.warn { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+  .chip.info { background: var(--surface-2); color: var(--ink-soft); border-color: var(--line-strong); }
 
   /* ---------- output stat grid ---------- */
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -251,6 +252,14 @@
   }
   .stat .value .unit { font-size: 12px; font-weight: 500; color: var(--ink-soft); margin-left: 3px; }
   .stat.accent .value { color: var(--accent); }
+  .stat-grid.unreliable { position: relative; }
+  .stat-grid.unreliable .stat { opacity: 0.4; filter: grayscale(0.6); }
+  .stat-grid.unreliable::after {
+    content: "Inputs invalid above — these numbers aren't reliable"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--danger); background: var(--danger-soft);
+    border-radius: 8px; pointer-events: none;
+  }
 
   table.spec {
     width: 100%; border-collapse: collapse; font-size: 13px;

@@ -93,14 +93,28 @@
     if (isFinite(MA) && MA >= 1) warnings.push("L₁/R ≥ 1 — this is no longer force-reducing like a typical class-3 ratio. Check L₁, L₂, β.");
     if (dThetaDeg > maxDThetaDeg) warnings.push(`Required rotation (${dThetaDeg.toFixed(1)}°) exceeds your max lever rotation constraint (${maxDThetaDeg}°).`);
     if (R < 1e-6) warnings.push("Arm segments collapse onto each other at this bend angle — increase β.");
+    if (Fe <= 0) warnings.push("Design effort force must be positive.");
+    if (me <= 0) warnings.push("Effort mass must be positive.");
+    if (ml <= 0) warnings.push("Load mass must be positive.");
+    if (ve < 0) warnings.push("Effort velocity must be zero or positive — a negative value would silently square away its own sign.");
+    if (springMode === "givenX" ? xBudget <= 0 : k <= 0) warnings.push("Spring rate / travel budget must be positive.");
+    if (ILever < 0) warnings.push("Lever inertia cannot be negative.");
+    if (eta <= 0 || eta > 1) warnings.push("Efficiency (η) must be greater than 0 and no more than 100%.");
 
+    // returnStatusLevel distinguishes a genuine problem ("error") from the
+    // expected default state ("info": nonzero offset is often deliberate,
+    // not a mistake) so callers don't have to re-derive which is which.
     const returnWarnings = [];
+    let returnStatusLevel;
     if (Ieff <= 1e-12) {
       returnWarnings.push("Enter a nonzero lever inertia — a massless lever with any dead-center offset gives an undefined spin rate.");
+      returnStatusLevel = "error";
     } else if (deadCenter) {
       returnWarnings.push("DEAD CENTER — both masses return at 0 velocity; all return energy is lever spin.");
+      returnStatusLevel = "ok";
     } else {
       returnWarnings.push("Offset from dead center — residual return velocity present on the axis with α>0.");
+      returnStatusLevel = "info";
     }
 
     const feasible = warnings.length === 0 && Ieff > 1e-12 &&
@@ -109,11 +123,66 @@
     return {
       R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
       aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings, maxDThetaDeg,
-      Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings,
+      Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings, returnStatusLevel,
       feasible,
       geom: { L1, L2, beta, alphaEffort, alphaLoad }
     };
   }
 
-  global.LeverPhysics = { DEG_TO_RAD, G, clamp, computeAll };
+  /**
+   * Optional spring wire check, independent of computeAll — pass it the
+   * physical wire geometry plus the peak spring force already computed by
+   * computeAll (r.FspringMax). All inputs SI (m, N, Pa, kg/m^3). Returns
+   * null if the geometry inputs aren't filled in (this check is opt-in).
+   *
+   * References: spring index preferred 4-12 and slenderness ratio (free
+   * length / mean coil diameter) buckling limit ~4 are standard spring
+   * design guidance (Associated Spring / Newcomb Spring / Acxess Spring).
+   * Wahl factor and shear stress formula, and the "yield shear ~= 0.35-0.52
+   * of Sut" range, follow Shigley's Mechanical Engineering Design. Surge
+   * frequency formula (first longitudinal mode) follows standard spring
+   * vibration references (RoyMech, MISUMI).
+   */
+  function computeSpringCheck(input) {
+    const { wireDiameter: d, coilDiameter: D, activeCoils: Na, freeLength: Lfree,
+      shearModulus: Gw, density: rho, Sut, FspringMax, kEntered, xMax } = input;
+
+    if (!(d > 0 && D > 0 && Na > 0 && Lfree > 0 && Gw > 0)) return null;
+
+    const C = D / d; // spring index
+    const Kw = (4 * C - 1) / (4 * C - 4) + 0.615 / C; // Wahl correction factor
+    const kFromGeometry = Gw * Math.pow(d, 4) / (8 * Math.pow(D, 3) * Na);
+    const tauMax = isFinite(FspringMax) && FspringMax > 0 ? 8 * FspringMax * D * Kw / (Math.PI * Math.pow(d, 3)) : 0;
+
+    const allowStatic = 0.45 * Sut;   // ~static yield-based allowable, Shigley Ssy ~ 0.35-0.52 Sut
+    const allowCyclic = 0.30 * Sut;   // conservative fatigue-derated allowable
+
+    const slenderness = Lfree / D;
+    const needsGuideRod = slenderness > 4; // Associated Spring / Acxess Spring guidance
+
+    const solidHeight = (Na + 2) * d; // approx, squared-and-ground ends
+    const availableTravel = Lfree - solidHeight;
+
+    const fSurge = (d / (2 * Math.PI * D * D * Na)) * Math.sqrt(Gw / rho); // Hz, first surge mode
+
+    const kDeviationPct = isFinite(kEntered) && kEntered > 0 ? (kFromGeometry - kEntered) / kEntered * 100 : null;
+
+    const warnings = [];
+    if (C < 4) warnings.push(`Spring index C=${C.toFixed(1)} is below the preferred 4–12 range — this wire will be difficult to coil.`);
+    if (C > 12) warnings.push(`Spring index C=${C.toFixed(1)} is above the preferred 4–12 range — more prone to buckling and coil-to-coil contact.`);
+    if (needsGuideRod) warnings.push(`Slenderness ratio ${slenderness.toFixed(1)} (free length / mean coil dia.) exceeds 4 — this spring needs a guide rod or sleeve or it will buckle sideways instead of compressing straight.`);
+    if (tauMax > 0 && tauMax > allowStatic) warnings.push("Peak wire shear stress exceeds the static allowable — this spring will likely take a permanent set or fail.");
+    else if (tauMax > 0 && tauMax > allowCyclic) warnings.push("Peak wire shear stress is within the static allowable but above the conservative cyclic/fatigue allowable — fine for a one-shot event, risky for repeated cycling.");
+    if (availableTravel <= 0) warnings.push("Free length minus estimated solid height is zero or negative — check active coil count and free length.");
+    else if (isFinite(xMax) && xMax > availableTravel) warnings.push("Computed spring travel (x_max) exceeds the available travel before coil bind — this spring will bottom out solid before absorbing the full energy.");
+
+    return {
+      C, Kw, kFromGeometry, kDeviationPct, tauMax, allowStatic, allowCyclic,
+      safetyFactorStatic: tauMax > 0 ? allowStatic / tauMax : NaN,
+      safetyFactorCyclic: tauMax > 0 ? allowCyclic / tauMax : NaN,
+      slenderness, needsGuideRod, solidHeight, availableTravel, fSurge, warnings
+    };
+  }
+
+  global.LeverPhysics = { DEG_TO_RAD, G, clamp, computeAll, computeSpringCheck };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -8,8 +8,8 @@
 
   const STORAGE_KEY = "clement-math-unit-prefs-v1";
 
-  const DEFAULTS_US = { length: "in", force: "lbf", mass: "lb", velocity: "in/s", angle: "deg", rate: "lbf/in", energy: "in-lbf", inertia: "lbm-in2" };
-  const DEFAULTS_SI = { length: "mm", force: "N", mass: "kg", velocity: "m/s", angle: "deg", rate: "N/mm", energy: "J", inertia: "kg-mm2" };
+  const DEFAULTS_US = { length: "in", force: "lbf", mass: "lb", velocity: "in/s", angle: "deg", rate: "lbf/in", energy: "in-lbf", inertia: "lbm-in2", stress: "psi" };
+  const DEFAULTS_SI = { length: "mm", force: "N", mass: "kg", velocity: "m/s", angle: "deg", rate: "N/mm", energy: "J", inertia: "kg-mm2", stress: "MPa" };
 
   function load() {
     try {

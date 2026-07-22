@@ -49,7 +49,9 @@
     angle: { deg: DEG, rad: 1 },
     rate: { "N/m": 1, "N/mm": 1000, "lbf/in": LBF / IN, "lbf/ft": LBF / FT, "kgf/mm": KGF / 0.001 },
     energy: { J: 1, mJ: 0.001, "in-lbf": IN * LBF, "ft-lbf": FT * LBF },
-    inertia: { "kg-m2": 1, "kg-mm2": 1e-6, "lbm-in2": LB * IN * IN, "lbm-ft2": LB * FT * FT, "slug-ft2": SLUG * FT * FT }
+    inertia: { "kg-m2": 1, "kg-mm2": 1e-6, "lbm-in2": LB * IN * IN, "lbm-ft2": LB * FT * FT, "slug-ft2": SLUG * FT * FT },
+    // stress/pressure (force per area) — psi derived from lbf/in^2, not a separately memorized constant
+    stress: { Pa: 1, kPa: 1000, MPa: 1e6, GPa: 1e9, psi: LBF / (IN * IN), ksi: 1000 * (LBF / (IN * IN)) }
   };
 
   // human-friendly display labels (TABLES keys are kept identifier-safe, no special chars)
@@ -61,7 +63,8 @@
     angle: { deg: "deg", rad: "rad" },
     rate: { "N/m": "N/m", "N/mm": "N/mm", "lbf/in": "lbf/in", "lbf/ft": "lbf/ft", "kgf/mm": "kgf/mm" },
     energy: { J: "J", mJ: "mJ", "in-lbf": "in·lbf", "ft-lbf": "ft·lbf" },
-    inertia: { "kg-m2": "kg·m²", "kg-mm2": "kg·mm²", "lbm-in2": "lbm·in²", "lbm-ft2": "lbm·ft²", "slug-ft2": "slug·ft²" }
+    inertia: { "kg-m2": "kg·m²", "kg-mm2": "kg·mm²", "lbm-in2": "lbm·in²", "lbm-ft2": "lbm·ft²", "slug-ft2": "slug·ft²" },
+    stress: { Pa: "Pa", kPa: "kPa", MPa: "MPa", GPa: "GPa", psi: "psi", ksi: "ksi" }
   };
 
   const KINDS = {};
@@ -132,6 +135,9 @@
     // 2d. Cross-kind consistency: rate table's lbf/in must equal force-table lbf divided by length-table in.
     check("lbf/in consistent with lbf and in tables independently", approxEqual(toSI("rate", 1, "lbf/in"), toSI("force", 1, "lbf") / toSI("length", 1, "in"), 1e-12),
       `${toSI("rate", 1, "lbf/in")} vs ${toSI("force", 1, "lbf") / toSI("length", 1, "in")}`);
+    check("1 psi ~= 6894.76 Pa (NIST value)", approxEqual(toSI("stress", 1, "psi"), 6894.757293168, 1e-6), String(toSI("stress", 1, "psi")));
+    check("psi consistent with lbf and in tables independently", approxEqual(toSI("stress", 1, "psi"), toSI("force", 1, "lbf") / (toSI("length", 1, "in") * toSI("length", 1, "in")), 1e-12),
+      `${toSI("stress", 1, "psi")} vs ${toSI("force", 1, "lbf") / (toSI("length", 1, "in") * toSI("length", 1, "in"))}`);
 
     const pass = results.every(r => r.ok);
     return { pass, results };

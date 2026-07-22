@@ -369,7 +369,7 @@
       const hi = SU.fromSI("force", t.maxSI, unitPrefs.force).toFixed(1);
       chip.innerHTML = `${escapeHtml(t.name)} (${lo}–${hi} ${SU.label("force", unitPrefs.force)}) <button title="Remove tag">×</button>`;
       chip.querySelector("button").addEventListener("click", async () => {
-        await tagsIdb.delete(t.id);
+        try { await tagsIdb.delete(t.id); } catch (e) { showToast("Couldn't remove tag: " + e.message, true); return; }
         await loadTags();
       });
       el.appendChild(chip);
@@ -382,7 +382,9 @@
     let max = parseFloat(document.getElementById("tagMax").value);
     if (!name || !isFinite(min) || !isFinite(max)) return;
     if (min > max) { const t = min; min = max; max = t; }
-    await tagsIdb.put({ name, minSI: SU.toSI("force", min, unitPrefs.force), maxSI: SU.toSI("force", max, unitPrefs.force) });
+    try {
+      await tagsIdb.put({ name, minSI: SU.toSI("force", min, unitPrefs.force), maxSI: SU.toSI("force", max, unitPrefs.force) });
+    } catch (e) { showToast("Couldn't save tag: " + e.message, true); return; }
     document.getElementById("tagName").value = "";
     document.getElementById("tagMin").value = "";
     document.getElementById("tagMax").value = "";
@@ -449,14 +451,25 @@
     });
   }
 
+  // HTML-level guardrail so a sweep can't be seeded with physically
+  // impossible values (negative mass, negative force, etc.) — physics.js
+  // still independently validates every sample regardless.
+  function inputBoundsFor(p) {
+    if (p.id === "beta") return 'min="0.1" max="180"';
+    if (p.id === "alphaEffort" || p.id === "alphaLoad") return 'min="0" max="89.9"';
+    if (p.kind === "pct") return 'min="0" max="100"';
+    return 'min="0"'; // length, force, mass, velocity, rate, inertia are all positive-only quantities
+  }
+
   function renderValueCell(td, p, cfg) {
     td.innerHTML = "";
     const unit = unitLabel(p);
+    const bounds = inputBoundsFor(p);
     if (cfg.mode === "lock") {
-      td.innerHTML = `<div class="range-cell"><input type="number" class="v-lock" step="any" value="${cfg.lock}"> <span class="to">${unit}</span></div>`;
+      td.innerHTML = `<div class="range-cell"><input type="number" class="v-lock" step="any" ${bounds} value="${cfg.lock}"> <span class="to">${unit}</span></div>`;
       td.querySelector(".v-lock").addEventListener("input", e => { cfg.lock = parseFloat(e.target.value) || 0; });
     } else {
-      td.innerHTML = `<div class="range-cell"><input type="number" class="v-min" step="any" value="${cfg.min}"> <span class="to">to</span> <input type="number" class="v-max" step="any" value="${cfg.max}"> <span class="to">${unit}</span></div>`;
+      td.innerHTML = `<div class="range-cell"><input type="number" class="v-min" step="any" ${bounds} value="${cfg.min}"> <span class="to">to</span> <input type="number" class="v-max" step="any" ${bounds} value="${cfg.max}"> <span class="to">${unit}</span></div>`;
       td.querySelector(".v-min").addEventListener("input", e => { cfg.min = parseFloat(e.target.value) || 0; });
       td.querySelector(".v-max").addEventListener("input", e => { cfg.max = parseFloat(e.target.value) || 0; });
     }
@@ -629,24 +642,29 @@
   const TABLE_COLS = [
     { id: "rank", label: "#", get: (s, i) => i + 1, dec: 0 },
     { id: "score", label: "Score", get: s => s.score, dec: 4 },
-    { id: "L1", label: "L1", get: s => paramFromSI(PARAM_DEFS[0], s.input.L1), dec: 3 },
-    { id: "L2", label: "L2", get: s => paramFromSI(PARAM_DEFS[1], s.input.L2), dec: 3 },
-    { id: "beta", label: "β", get: s => paramFromSI(PARAM_DEFS[2], s.input.beta), dec: 1 },
-    { id: "Fe", label: "Fe", get: s => paramFromSI(PARAM_DEFS[3], s.input.Fe), dec: 1 },
-    { id: "me", label: "me", get: s => paramFromSI(PARAM_DEFS[4], s.input.me), dec: 3 },
-    { id: "ve", label: "ve", get: s => paramFromSI(PARAM_DEFS[5], s.input.ve), dec: 1 },
-    { id: "ml", label: "ml", get: s => paramFromSI(PARAM_DEFS[6], s.input.ml), dec: 3 },
-    { id: "eta", label: "η%", get: s => s.input.eta * 100, dec: 0 },
-    { id: "alphaEffort", label: "αe", get: s => paramFromSI(PARAM_DEFS[10], s.input.alphaEffort), dec: 1 },
-    { id: "alphaLoad", label: "αl", get: s => paramFromSI(PARAM_DEFS[11], s.input.alphaLoad), dec: 1 },
-    { id: "Fl", label: "F_load", get: s => SU.fromSI("force", s.r.Fl, unitPrefs.force), dec: 2 },
-    { id: "sE", label: "s_e", get: s => SU.fromSI("length", s.r.sE, unitPrefs.length), dec: 3 },
-    { id: "xMax", label: "x_max", get: s => SU.fromSI("length", s.r.xMax, unitPrefs.length), dec: 3 },
-    { id: "vEffortHome", label: "v_e,home", get: s => SU.fromSI("velocity", s.r.vEffortHome, unitPrefs.velocity), dec: 3 },
-    { id: "vLoadHome", label: "v_l,home", get: s => SU.fromSI("velocity", s.r.vLoadHome, unitPrefs.velocity), dec: 3 },
-    { id: "totalTravel", label: "Total travel", get: s => SU.fromSI("length", s.r.totalTravel, unitPrefs.length), dec: 3 },
+    { id: "L1", label: "L1", kind: "length", get: s => paramFromSI(PARAM_DEFS[0], s.input.L1), dec: 3 },
+    { id: "L2", label: "L2", kind: "length", get: s => paramFromSI(PARAM_DEFS[1], s.input.L2), dec: 3 },
+    { id: "beta", label: "β", kind: "angle", get: s => paramFromSI(PARAM_DEFS[2], s.input.beta), dec: 1 },
+    { id: "Fe", label: "Fe", kind: "force", get: s => paramFromSI(PARAM_DEFS[3], s.input.Fe), dec: 1 },
+    { id: "me", label: "me", kind: "mass", get: s => paramFromSI(PARAM_DEFS[4], s.input.me), dec: 3 },
+    { id: "ve", label: "ve", kind: "velocity", get: s => paramFromSI(PARAM_DEFS[5], s.input.ve), dec: 1 },
+    { id: "ml", label: "ml", kind: "mass", get: s => paramFromSI(PARAM_DEFS[6], s.input.ml), dec: 3 },
+    { id: "eta", label: "η", kind: "%", get: s => s.input.eta * 100, dec: 0 },
+    { id: "alphaEffort", label: "αe", kind: "angle", get: s => paramFromSI(PARAM_DEFS[10], s.input.alphaEffort), dec: 1 },
+    { id: "alphaLoad", label: "αl", kind: "angle", get: s => paramFromSI(PARAM_DEFS[11], s.input.alphaLoad), dec: 1 },
+    { id: "Fl", label: "F_load", kind: "force", get: s => SU.fromSI("force", s.r.Fl, unitPrefs.force), dec: 2 },
+    { id: "sE", label: "s_e", kind: "length", get: s => SU.fromSI("length", s.r.sE, unitPrefs.length), dec: 3 },
+    { id: "xMax", label: "x_max", kind: "length", get: s => SU.fromSI("length", s.r.xMax, unitPrefs.length), dec: 3 },
+    { id: "vEffortHome", label: "v_e,home", kind: "velocity", get: s => SU.fromSI("velocity", s.r.vEffortHome, unitPrefs.velocity), dec: 3 },
+    { id: "vLoadHome", label: "v_l,home", kind: "velocity", get: s => SU.fromSI("velocity", s.r.vLoadHome, unitPrefs.velocity), dec: 3 },
+    { id: "totalTravel", label: "Total travel", kind: "length", get: s => SU.fromSI("length", s.r.totalTravel, unitPrefs.length), dec: 3 },
     { id: "tags", label: "Tags", type: "text", get: s => (s.tags || []).join(", ") }
   ];
+  function colHeaderLabel(col) {
+    if (col.kind === "%") return `${col.label} (%)`;
+    if (!col.kind) return col.label;
+    return `${col.label} (${SU.label(col.kind, unitPrefs[col.kind])})`;
+  }
   const TABLE_LIMIT = 100;
   let sortState = { key: "score", dir: "desc" };
 
@@ -657,7 +675,7 @@
     TABLE_COLS.forEach(col => {
       const th = document.createElement("th");
       th.className = "sortable";
-      th.textContent = col.label;
+      th.textContent = colHeaderLabel(col);
       if (sortState.key === col.id) {
         const arrow = document.createElement("span");
         arrow.className = "arrow";
@@ -710,7 +728,7 @@
   const axisXSel = document.getElementById("axisX");
   const axisYSel = document.getElementById("axisY");
   function populateAxisPickers() {
-    const opts = METRICS.filter(m => m.id !== "FloadDevPct" || lastRun.activeMetrics.some(a => a.id === "FloadDevPct") || true)
+    const opts = METRICS.filter(m => m.id !== "FloadDevPct" || lastRun.activeMetrics.some(a => a.id === "FloadDevPct"))
       .map(m => `<option value="${m.id}">${m.label}</option>`).join("");
     axisXSel.innerHTML = opts; axisYSel.innerHTML = opts;
     axisXSel.value = "sE"; axisYSel.value = "vLoadHome";
@@ -804,7 +822,7 @@
   // ---------- export ----------
   const EXPORT_COLS = TABLE_COLS.filter(c => c.id !== "rank");
   function buildExportRows(samples) {
-    const headers = ["rank", ...EXPORT_COLS.map(c => c.label), "pareto_optimal_current_axes"];
+    const headers = ["rank", ...EXPORT_COLS.map(colHeaderLabel), "pareto_optimal_current_axes"];
     const paretoSet = lastRun.paretoIndexSet || new Set();
     const originalIndex = new Map(lastRun.feasible.map((s, i) => [s, i]));
     const rows = samples.map((s, idx) => [
@@ -840,12 +858,14 @@
     const name = document.getElementById("saveName").value.trim() || `Run ${new Date().toLocaleString()}`;
     const top = lastRun.feasible.slice(0, 500);
     const { headers, rows } = buildExportRows(top);
-    await idb.put({
-      name, timestamp: Date.now(),
-      generated: lastRun.generated, feasibleCount: lastRun.feasible.length,
-      bestScore: lastRun.feasible[0] ? lastRun.feasible[0].score : null,
-      headers, rows
-    });
+    try {
+      await idb.put({
+        name, timestamp: Date.now(),
+        generated: lastRun.generated, feasibleCount: lastRun.feasible.length,
+        bestScore: lastRun.feasible[0] ? lastRun.feasible[0].score : null,
+        headers, rows
+      });
+    } catch (e) { showToast("Couldn't save run: " + e.message + " — try exporting to CSV/.xlsx instead.", true); return; }
     document.getElementById("saveName").value = "";
     renderSavedRuns();
   });
@@ -874,13 +894,24 @@
         window.SharedExport.downloadXLSX(`${slug(run.name)}.xlsx`, "Sweep Results", run.headers, run.rows);
       });
       div.querySelector('[data-act="del"]').addEventListener("click", async () => {
-        await idb.delete(run.id);
+        try { await idb.delete(run.id); } catch (e) { showToast("Couldn't delete run: " + e.message, true); return; }
         renderSavedRuns();
       });
       list.appendChild(div);
     });
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  function showToast(msg, isError) {
+    const existing = document.getElementById("toast");
+    if (existing) existing.remove();
+    const div = document.createElement("div");
+    div.id = "toast";
+    div.textContent = msg;
+    div.style.cssText = `position:fixed;bottom:20px;right:20px;max-width:360px;background:${isError ? "var(--danger)" : "var(--ok)"};color:#fff;padding:10px 16px;border-radius:8px;font-family:var(--font-mono);font-size:12px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.25);`;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 5000);
+  }
   function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "run"; }
 
   // ---------- init ----------
