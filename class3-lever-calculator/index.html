@@ -134,6 +134,13 @@
             <span class="unit-tag" data-u="length"></span>
           </div>
         </div>
+        <div class="field-row">
+          <label><span class="label-text">Preload compression (x<sub>0</sub>)</span><span class="hint">how far the spring is already compressed at rest before first contact — nonzero for long springs installed "live compressed." 0 = spring starts at free length</span></label>
+          <div class="input-unit">
+            <input type="number" id="xPreload" step="0.01" />
+            <span class="unit-tag" data-u="length"></span>
+          </div>
+        </div>
 
         <details class="advanced">
           <summary>Advanced — mechanism efficiency</summary>
@@ -328,6 +335,14 @@
             <div class="label">Time to max compression</div>
             <div class="value" id="out_tspring">—</div>
           </div>
+          <div class="stat">
+            <div class="label">Preload force (F<sub>0</sub> = k·x<sub>0</sub>)</div>
+            <div class="value" id="out_F0">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Total compression from free length (x<sub>0</sub>+x<sub>max</sub>)</div>
+            <div class="value" id="out_xTotal">—</div>
+          </div>
         </div>
       </div>
 
@@ -502,7 +517,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
   // ---------- parameter metadata (id -> unit kind; 'deg' handled via angle pref, 'pct' is dimensionless) ----------
   const KIND_OF = {
     L1: "length", L2: "length", Fe: "force", me: "mass", ve: "velocity",
-    ml: "mass", k: "rate", xBudget: "length", ILever: "inertia"
+    ml: "mass", k: "rate", xBudget: "length", xPreload: "length", ILever: "inertia"
   };
   function uOf(kind) { return unitPrefs[kind]; }
   function toSI(kind, v) { return SU.toSI(kind, parseFloat(v) || 0, uOf(kind)); }
@@ -514,12 +529,12 @@ v_l,home = R·ω_home·sin(α_l)</div>
   const state = {
     L1: 0.0508, L2: 0.127, beta: 150, maxDTheta: 150,
     Fe: 1334.4664845781501, me: 0.226796185, ve: 3.048,
-    ml: 0.90718474, k: 8756.339, xBudget: 0.0254,
+    ml: 0.90718474, k: 8756.339, xBudget: 0.0254, xPreload: 0,
     eta: 0.85, springMode: "givenK",
     alphaEffort: 3, alphaLoad: 3, ILever: 0.00029263965342920003
   };
 
-  const lengthMassForceIds = ["L1", "L2", "Fe", "me", "ve", "ml", "k", "xBudget", "ILever"];
+  const lengthMassForceIds = ["L1", "L2", "Fe", "me", "ve", "ml", "k", "xBudget", "xPreload", "ILever"];
 
   function refreshUnitTags() {
     document.querySelectorAll(".unit-tag[data-u]").forEach(el => {
@@ -672,7 +687,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
       wireDiameter: springState.wireDiameter, coilDiameter: springState.coilDiameter,
       activeCoils: springState.activeCoils, freeLength: springState.freeLength,
       shearModulus: springState.shearModulus, density: springState.wireDensity, Sut: springState.sut,
-      FspringMax: r.FspringMax, kEntered: r.kUsed, xMax: r.xMax
+      FspringMax: r.FspringMax, kEntered: r.kUsed, xMax: r.xMax, xPreload: r.xPreload
     });
   }
 
@@ -711,7 +726,8 @@ v_l,home = R·ω_home·sin(α_l)</div>
     { id: "eta", label: "η (%)", kind: "pct" },
     { id: "alphaEffort", label: "αₑ", kind: "angle" },
     { id: "alphaLoad", label: "αₗ", kind: "angle" },
-    { id: "ILever", label: "I_lever", kind: "inertia" }
+    { id: "ILever", label: "I_lever", kind: "inertia" },
+    { id: "xPreload", label: "x₀ (preload)", kind: "length" }
   ];
   const bounds = {}; // id -> { lo: displayVal|null, hi: displayVal|null }
   BOUNDS_PARAMS.forEach(p => { bounds[p.id] = { lo: null, hi: null }; });
@@ -865,6 +881,8 @@ v_l,home = R·ω_home·sin(α_l)</div>
     setStat("out_kreq", fromSI("rate", r.kUsed), SU.label("rate", uOf("rate")), 2);
     setStat("out_Fspring", fromSI("force", r.FspringMax), SU.label("force", uOf("force")), 2);
     setStat("out_tspring", r.tSpring * 1000, "ms", 2);
+    setStat("out_F0", fromSI("force", r.F0), SU.label("force", uOf("force")), 2);
+    setStat("out_xTotal", fromSI("length", r.xPreload + r.xMax), SU.label("length", uOf("length")), 3);
 
     const returnStatusRow = document.getElementById("returnStatusRow");
     returnStatusRow.innerHTML = "";
@@ -895,6 +913,9 @@ v_l,home = R·ω_home·sin(α_l)</div>
       ["Load handoff velocity (v_l)", fromSI("velocity", r.vL), SU.label("velocity", uOf("velocity")), 2],
       [state.springMode === "givenK" ? "Max load-mass travel (x_max)" : "Load-mass travel (from budget)", fromSI("length", r.xMax), SU.label("length", uOf("length")), 3],
       [state.springMode === "givenK" ? "Spring rate (as entered)" : "Required spring rate", fromSI("rate", r.kUsed), SU.label("rate", uOf("rate")), 2],
+      ["Preload compression (x_0)", fromSI("length", r.xPreload), SU.label("length", uOf("length")), 3],
+      ["Preload force (F_0)", fromSI("force", r.F0), SU.label("force", uOf("force")), 2],
+      ["Total compression from free length (x_0+x_max)", fromSI("length", r.xPreload + r.xMax), SU.label("length", uOf("length")), 3],
       ["Peak spring force", fromSI("force", r.FspringMax), SU.label("force", uOf("force")), 2],
       ["Peak deceleration at max compression", r.aMaxG, "g", 2],
       ["Total linear-bearing travel needed", fromSI("length", r.totalTravel), SU.label("length", uOf("length")), 3],

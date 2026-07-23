@@ -124,6 +124,42 @@ t_spring = (π/2) · √( m_load / k )
 The calculator can also solve the inverse direction: given a stroke budget
 (packaging limit), it back-solves the required spring rate `k`.
 
+## Formulas — spring preload (pre-compression)
+
+Some real spring options are long enough to live installed already
+compressed by some amount `x0` before the load mass ever reaches them
+(equivalently, a preload force `F0 = k·x0`). The spring's resisting force at
+first contact is then already `k·x0` instead of zero, so the energy balance
+becomes a quadratic in the *additional* travel `Δx_max` rather than the
+direct square root used above:
+
+```
+½ · m_load · v_load² = k·x0·Δx_max + ½·k·Δx_max²
+
+Δx_max = √( x0² + m_load·v_load²/k ) − x0      (replaces x_max = v_load·√(m_load/k))
+F_spring,max = k·(x0 + Δx_max) = √( F0² + F_spring,max(no preload)² )
+t_to_peak = arccos( x0 / (x0+Δx_max) ) · √( m_load/k )   (replaces (π/2)·√(m_load/k))
+```
+
+`x_max` keeps its existing meaning everywhere it's displayed — it's the load
+mass's own travel from first contact, i.e. `Δx_max` above. All three
+formulas collapse exactly to the originals when `x0 = 0` — `arccos(0) =
+π/2` and the quadratic's square root reduces to the direct one — so a
+preload of zero reproduces every existing result bit-for-bit.
+
+The inverse direction (given a travel budget `Δx` and a preload `x0`, solve
+for the required spring rate) generalizes the same way:
+
+```
+k = m_load·v_load² / ( Δx·(Δx + 2·x0) )
+```
+
+which also collapses to the original `k = m_load·v_load²/Δx²` at `x0 = 0`.
+
+A preloaded spring also loses that much of its travel to solid before
+impact even starts, so the spring wire check's available travel before
+coil-bind (card 06) is reduced by `x0` accordingly.
+
 ## Formulas — return stroke & the dead-center technique
 
 The same spring pushes both masses back toward the home hard stop — without

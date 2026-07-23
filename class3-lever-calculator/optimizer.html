@@ -288,6 +288,7 @@
     { id: "ml", label: "Load mass (mₗ)", kind: "mass", lock: 2.0, range: [0.5, 5] },
     { id: "k", label: "Spring rate (k)", kind: "rate", lock: 50, range: [10, 150], springMode: "givenK" },
     { id: "xBudget", label: "Spring travel budget", kind: "length", lock: 1.0, range: [0.25, 2], springMode: "givenX" },
+    { id: "xPreload", label: "Preload compression (x₀)", kind: "length", lock: 0, range: [0, 0.5] },
     { id: "eta", label: "Efficiency (η)", kind: "pct", lock: 85, range: [60, 95] },
     { id: "alphaEffort", label: "Effort dead-center offset (αₑ)", kind: "angle", lock: 3, range: [0, 15] },
     { id: "alphaLoad", label: "Load dead-center offset (αₗ)", kind: "angle", lock: 3, range: [0, 15] },
@@ -639,19 +640,21 @@
   }
 
   // ---------- results table ----------
+  function paramById(id) { return PARAM_DEFS.find(p => p.id === id); }
   const TABLE_COLS = [
     { id: "rank", label: "#", get: (s, i) => i + 1, dec: 0 },
     { id: "score", label: "Score", get: s => s.score, dec: 4 },
-    { id: "L1", label: "L1", kind: "length", get: s => paramFromSI(PARAM_DEFS[0], s.input.L1), dec: 3 },
-    { id: "L2", label: "L2", kind: "length", get: s => paramFromSI(PARAM_DEFS[1], s.input.L2), dec: 3 },
-    { id: "beta", label: "β", kind: "angle", get: s => paramFromSI(PARAM_DEFS[2], s.input.beta), dec: 1 },
-    { id: "Fe", label: "Fe", kind: "force", get: s => paramFromSI(PARAM_DEFS[3], s.input.Fe), dec: 1 },
-    { id: "me", label: "me", kind: "mass", get: s => paramFromSI(PARAM_DEFS[4], s.input.me), dec: 3 },
-    { id: "ve", label: "ve", kind: "velocity", get: s => paramFromSI(PARAM_DEFS[5], s.input.ve), dec: 1 },
-    { id: "ml", label: "ml", kind: "mass", get: s => paramFromSI(PARAM_DEFS[6], s.input.ml), dec: 3 },
+    { id: "L1", label: "L1", kind: "length", get: s => paramFromSI(paramById("L1"), s.input.L1), dec: 3 },
+    { id: "L2", label: "L2", kind: "length", get: s => paramFromSI(paramById("L2"), s.input.L2), dec: 3 },
+    { id: "beta", label: "β", kind: "angle", get: s => paramFromSI(paramById("beta"), s.input.beta), dec: 1 },
+    { id: "Fe", label: "Fe", kind: "force", get: s => paramFromSI(paramById("Fe"), s.input.Fe), dec: 1 },
+    { id: "me", label: "me", kind: "mass", get: s => paramFromSI(paramById("me"), s.input.me), dec: 3 },
+    { id: "ve", label: "ve", kind: "velocity", get: s => paramFromSI(paramById("ve"), s.input.ve), dec: 1 },
+    { id: "ml", label: "ml", kind: "mass", get: s => paramFromSI(paramById("ml"), s.input.ml), dec: 3 },
+    { id: "xPreload", label: "x0", kind: "length", get: s => paramFromSI(paramById("xPreload"), s.input.xPreload || 0), dec: 3 },
     { id: "eta", label: "η", kind: "%", get: s => s.input.eta * 100, dec: 0 },
-    { id: "alphaEffort", label: "αe", kind: "angle", get: s => paramFromSI(PARAM_DEFS[10], s.input.alphaEffort), dec: 1 },
-    { id: "alphaLoad", label: "αl", kind: "angle", get: s => paramFromSI(PARAM_DEFS[11], s.input.alphaLoad), dec: 1 },
+    { id: "alphaEffort", label: "αe", kind: "angle", get: s => paramFromSI(paramById("alphaEffort"), s.input.alphaEffort), dec: 1 },
+    { id: "alphaLoad", label: "αl", kind: "angle", get: s => paramFromSI(paramById("alphaLoad"), s.input.alphaLoad), dec: 1 },
     { id: "Fl", label: "F_load", kind: "force", get: s => SU.fromSI("force", s.r.Fl, unitPrefs.force), dec: 2 },
     { id: "sE", label: "s_e", kind: "length", get: s => SU.fromSI("length", s.r.sE, unitPrefs.length), dec: 3 },
     { id: "xMax", label: "x_max", kind: "length", get: s => SU.fromSI("length", s.r.xMax, unitPrefs.length), dec: 3 },

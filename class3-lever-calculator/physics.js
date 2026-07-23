@@ -48,7 +48,7 @@
     const {
       L1, L2, beta: betaDegRaw, Fe, me, ve, ml, k, xBudget, eta, springMode,
       alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever,
-      maxDThetaDeg = 150
+      maxDThetaDeg = 150, xPreload = 0
     } = input;
     // Normalize defensively here too, not just at the UI boundary, so any
     // caller (a permalink, a sweep, a future page) that hands in e.g. 350
@@ -70,16 +70,26 @@
     const vL = ml > 1e-9 ? Math.sqrt(2 * energyToLoad / ml) : 0;
     const tL = vL > 1e-9 ? 2 * sL / vL : 0;
 
+    // With preload compression x0, the spring already pushes back with
+    // k*x0 at first contact, so the energy balance is a quadratic in the
+    // *additional* travel Δx_max rather than a direct square root. Every
+    // formula below collapses exactly to the original (x0=0) form when
+    // xPreload is 0 — see README for the full derivation.
     let kUsed, xMax;
     if (springMode === "givenX") {
       xMax = xBudget;
-      kUsed = xMax > 1e-9 ? ml * vL * vL / (xMax * xMax) : 0;
+      kUsed = xMax > 1e-9 ? ml * vL * vL / (xMax * (xMax + 2 * xPreload)) : 0;
     } else {
       kUsed = k;
-      xMax = kUsed > 1e-9 ? vL * Math.sqrt(ml / kUsed) : 0;
+      xMax = kUsed > 1e-9
+        ? Math.sqrt(xPreload * xPreload + ml * vL * vL / kUsed) - xPreload
+        : 0;
     }
-    const FspringMax = kUsed * xMax;
-    const tSpring = kUsed > 1e-9 ? (Math.PI / 2) * Math.sqrt(ml / kUsed) : 0;
+    const F0 = kUsed * xPreload;
+    const FspringMax = kUsed * (xPreload + xMax);
+    const tSpring = kUsed > 1e-9 && (xPreload + xMax) > 1e-12
+      ? Math.acos(clamp(xPreload / (xPreload + xMax), -1, 1)) * Math.sqrt(ml / kUsed)
+      : 0;
     const aMaxG = ml > 1e-9 ? (FspringMax / ml) / G : 0;
     const totalTravel = sL + xMax;
     const totalTime = tE + tL + tSpring;
@@ -115,6 +125,7 @@
     if (springMode === "givenX" ? xBudget <= 0 : k <= 0) warnings.push("Spring rate / travel budget must be positive.");
     if (ILever < 0) warnings.push("Lever inertia cannot be negative.");
     if (eta <= 0 || eta > 1) warnings.push("Efficiency (η) must be greater than 0 and no more than 100%.");
+    if (xPreload < 0) warnings.push("Preload compression cannot be negative.");
 
     // returnStatusLevel distinguishes a genuine problem ("error") from the
     // expected default state ("info": nonzero offset is often deliberate,
@@ -137,6 +148,7 @@
 
     return {
       R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
+      xPreload, F0,
       aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings, maxDThetaDeg, betaDeg,
       Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings, returnStatusLevel,
       feasible,
@@ -160,7 +172,7 @@
    */
   function computeSpringCheck(input) {
     const { wireDiameter: d, coilDiameter: D, activeCoils: Na, freeLength: Lfree,
-      shearModulus: Gw, density: rho, Sut, FspringMax, kEntered, xMax } = input;
+      shearModulus: Gw, density: rho, Sut, FspringMax, kEntered, xMax, xPreload = 0 } = input;
 
     if (!(d > 0 && D > 0 && Na > 0 && Lfree > 0 && Gw > 0)) return null;
 
@@ -176,7 +188,9 @@
     const needsGuideRod = slenderness > 4; // Associated Spring / Acxess Spring guidance
 
     const solidHeight = (Na + 2) * d; // approx, squared-and-ground ends
-    const availableTravel = Lfree - solidHeight;
+    // A preloaded spring is already sitting compressed by xPreload at rest,
+    // so that much of its travel-to-solid is spent before impact even begins.
+    const availableTravel = Lfree - solidHeight - xPreload;
 
     const fSurge = (d / (2 * Math.PI * D * D * Na)) * Math.sqrt(Gw / rho); // Hz, first surge mode
 
