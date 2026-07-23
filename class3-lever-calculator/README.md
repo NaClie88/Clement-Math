@@ -171,21 +171,42 @@ or radians — whichever you picked for angle units in Settings.
 
 ## Diagram layout
 
-The schematic draws the effort mass on a slider arriving from the **right**
-and the load mass + spring + linear rail on the **left**, both riding one
-common horizontal axis — so the effort force is always drawn in line with
-the axis the spring acts along, matching a straight-through packaging
-layout. The fulcrum sits above, with the bent lever's two arms dropping to
-each slider through a dashed link (representing the Scotch-yoke slot
-coupling). Both masses are drawn as labeled blocks sized to their actual
-value, so a heavier effort or load mass visibly reads as a bigger block.
+The schematic draws **two separate, parallel rails** — one for the effort
+mass (arriving from the right), one for the load mass + spring (on the
+left) — not one shared track. The two masses ride independent linear
+bearings and are never drawn in a way that could suggest they collide or
+block each other; any interaction between them is only whatever you
+explicitly model as a constraint. The fulcrum sits above both rails, with
+the bent lever's two arms dropping to each slider through its own dashed
+link (representing each mass's independent Scotch-yoke slot coupling).
+Both masses are drawn as labeled blocks sized to their actual value, so a
+heavier effort or load mass visibly reads as a bigger block.
 
-One geometric note: perfectly aligning *both* sliders to one truly common,
-single straight rail while also holding both dead-center offsets (α_e, α_l)
-at exactly 0° simultaneously is only exact for a straight lever (β=180°) —
-for a genuinely bent lever there's a small minimum combined offset baked in
-by β. The diagram is the packaging concept; confirm the exact dead-center
-geometry for your specific rail arrangement in CAD.
+Because the two rails are independent, α_e and α_l (the return-stroke
+dead-center offsets) can each be tuned to 0° at the same time regardless of
+β — nothing about a bent lever forces a nonzero minimum offset the way it
+would if both masses had to share one literal rail. Each offset is defined
+purely relative to its own arm's home orientation; the physics doesn't
+care whether the two rails happen to be parallel, at an angle, or anything
+else, only that each one is straight.
+
+**Bend angle sign convention**: β can be any value, positive or negative —
+the artificial 0–180° lock has been removed. The sign only controls which
+side of straight-through the load arm bends to (positive and negative of
+the same magnitude are mirror images); the physics is identical either way,
+since every formula depends on β only through `cos(β)`, an even function.
+Entries wrap automatically onto the canonical (−180°, 180°] range — typing
+350° displays and behaves exactly like −10°, since they're the same bend.
+The schematic marks an absolute "straight up" 0° reference at the fulcrum
+so the sign is visually anchored, not just numeric.
+
+**Animation**: the Play/Pause/Reset controls under the schematic animate
+the lever through its full range of motion (hard stop → full extension →
+hard stop, looping) at a fixed, easy-to-watch pace — not the real physical
+timescale, which is typically single-digit milliseconds and far too fast
+to see. The dashed ready pose and the full-extension pose stay drawn as
+static references throughout; the solid accent-colored arm and both mass
+blocks are the live, moving position.
 
 ## Testing bounds & sensitivity (`index.html`)
 

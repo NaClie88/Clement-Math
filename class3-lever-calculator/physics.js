@@ -26,6 +26,18 @@
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+  // Wraps any degree value onto (-180, 180] — e.g. 350 and -10 normalize to
+  // the same -10, since they describe the same bend orientation. Used for
+  // beta (an absolute orientation on a circle), not for angles like alpha
+  // or maxDTheta that represent a bounded physical quantity rather than a
+  // position around a circle.
+  function normalizeAngle180(deg) {
+    let a = deg % 360;
+    if (a > 180) a -= 360;
+    if (a <= -180) a += 360;
+    return a;
+  }
+
   /**
    * Pure function: all inputs and outputs in SI (m, N, kg, rad, s) except
    * betaDeg/alphaEffortDeg/alphaLoadDeg/maxDThetaDeg which are degrees for
@@ -34,10 +46,14 @@
    */
   function computeAll(input) {
     const {
-      L1, L2, beta: betaDeg, Fe, me, ve, ml, k, xBudget, eta, springMode,
+      L1, L2, beta: betaDegRaw, Fe, me, ve, ml, k, xBudget, eta, springMode,
       alphaEffort: alphaEffortDeg, alphaLoad: alphaLoadDeg, ILever,
       maxDThetaDeg = 150
     } = input;
+    // Normalize defensively here too, not just at the UI boundary, so any
+    // caller (a permalink, a sweep, a future page) that hands in e.g. 350
+    // instead of -10 still gets a numerically identical, feasible result.
+    const betaDeg = normalizeAngle180(betaDegRaw);
 
     const beta = betaDeg * DEG_TO_RAD;
     const R = Math.sqrt(Math.max(0, L1 * L1 + L2 * L2 - 2 * L1 * L2 * Math.cos(beta)));
@@ -89,7 +105,6 @@
 
     const warnings = [];
     if (L1 <= 0 || L2 <= 0) warnings.push("Arm length must be positive.");
-    if (!(betaDeg > 0 && betaDeg <= 180)) warnings.push("Bend angle must be between 0° and 180°.");
     if (isFinite(MA) && MA >= 1) warnings.push("L₁/R ≥ 1 — this is no longer force-reducing like a typical class-3 ratio. Check L₁, L₂, β.");
     if (dThetaDeg > maxDThetaDeg) warnings.push(`Required rotation (${dThetaDeg.toFixed(1)}°) exceeds your max lever rotation constraint (${maxDThetaDeg}°).`);
     if (R < 1e-6) warnings.push("Arm segments collapse onto each other at this bend angle — increase β.");
@@ -122,7 +137,7 @@
 
     return {
       R, MA, Fl, KEin, sE, dTheta, dThetaDeg, sL, tE, vL, tL, kUsed, xMax, FspringMax, tSpring,
-      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings, maxDThetaDeg,
+      aMaxG, totalTravel, totalTime, gamma, gammaDeg, warnings, maxDThetaDeg, betaDeg,
       Ereturn, Ieff, omegaHome, omegaHomeRpm, vEffortHome, vLoadHome, deadCenter, returnWarnings, returnStatusLevel,
       feasible,
       geom: { L1, L2, beta, alphaEffort, alphaLoad }
@@ -184,5 +199,5 @@
     };
   }
 
-  global.LeverPhysics = { DEG_TO_RAD, G, clamp, computeAll, computeSpringCheck };
+  global.LeverPhysics = { DEG_TO_RAD, G, clamp, normalizeAngle180, computeAll, computeSpringCheck };
 })(typeof window !== "undefined" ? window : globalThis);

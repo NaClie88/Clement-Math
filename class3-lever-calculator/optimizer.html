@@ -455,7 +455,7 @@
   // impossible values (negative mass, negative force, etc.) — physics.js
   // still independently validates every sample regardless.
   function inputBoundsFor(p) {
-    if (p.id === "beta") return 'min="0.1" max="180"';
+    if (p.id === "beta") return 'min="-180" max="180"'; // 350 and -10 are the same bend — physics.js normalizes either way
     if (p.id === "alphaEffort" || p.id === "alphaLoad") return 'min="0" max="89.9"';
     if (p.kind === "pct") return 'min="0" max="100"';
     return 'min="0"'; // length, force, mass, velocity, rate, inertia are all positive-only quantities

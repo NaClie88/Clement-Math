@@ -21,6 +21,9 @@
   .tornado-bar-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
   .tornado-bar-fill { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
   .tornado-vals { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 2px; }
+
+  .diagram-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px 0; }
+  .diagram-controls .ghost-btn { padding: 7px 12px; }
 </style>
 </head>
 <body>
@@ -61,9 +64,9 @@
           </div>
         </div>
         <div class="field-row angle-row">
-          <label><span class="label-text">Bend angle at effort point (β)</span><span class="hint">interior angle between the two arm segments — 180° is a straight lever</span></label>
+          <label><span class="label-text">Bend angle at effort point (β)</span><span class="hint">180° is a straight lever. Sign picks which side the load arm bends to — positive and negative are mirror images of the same bend magnitude. Values wrap: 350° and −10° are the same bend.</span></label>
           <div class="slider-line">
-            <input type="range" id="betaRange" min="20" max="180" step="1" />
+            <input type="range" id="betaRange" min="-180" max="180" step="1" />
             <input type="number" id="beta" min="20" max="180" step="1" />
             <span class="unit-tag" data-u="angle"></span>
           </div>
@@ -238,11 +241,17 @@
       <div class="card diagram-card">
         <h2 style="margin:16px 16px 0;"><span class="n">◆</span> Schematic (to scale, live)</h2>
         <canvas id="lever" width="900" height="360"></canvas>
+        <div class="diagram-controls">
+          <button class="ghost-btn" id="playPauseBtn" type="button">▶ Play</button>
+          <button class="ghost-btn" id="resetBtn" type="button">⟲ Reset</button>
+          <span class="note" style="margin:0;">Animates the full range of motion, hard stop → full extension → hard stop.</span>
+        </div>
         <div class="diagram-legend">
           <span class="item"><span class="swatch" style="background:var(--ink-faint); border-top:2px dashed var(--ink-faint); height:0;"></span> ready / hard stop</span>
           <span class="item"><span class="swatch" style="background:var(--ink);"></span> full extension</span>
-          <span class="item"><span class="swatch" style="background:var(--accent);"></span> effort mass + force (from the right)</span>
-          <span class="item"><span class="swatch" style="background:var(--ok);"></span> load mass + linear rail + spring (on the left)</span>
+          <span class="item"><span class="swatch" style="background:var(--accent);"></span> live / animated position</span>
+          <span class="item"><span class="swatch" style="background:var(--ok);"></span> load rail + spring</span>
+          <span class="item"><span class="swatch" style="background:var(--accent-ink, var(--ink-soft));"></span> effort rail (separate, parallel)</span>
         </div>
       </div>
 
@@ -485,7 +494,7 @@ v_l,home = R·ω_home·sin(α_l)</div>
   "use strict";
 
   const SU = window.SharedUnits;
-  const { clamp } = window.LeverPhysics;
+  const { clamp, normalizeAngle180 } = window.LeverPhysics;
   const DEG_TO_RAD = Math.PI / 180;
 
   let unitPrefs = window.SharedUnitPrefs.load();
@@ -562,9 +571,13 @@ v_l,home = R·ω_home·sin(α_l)</div>
   document.getElementById("beta").addEventListener("input", e => {
     let deg = toSIAngleDeg(e.target.value);
     if (!isFinite(deg)) return;
-    deg = clamp(deg, 1, 180);
+    // 350 and -10 describe the same bend orientation — snap to the
+    // canonical (-180, 180] representative rather than clamping, so
+    // out-of-range entries wrap instead of getting stuck at the boundary.
+    deg = normalizeAngle180(deg);
     state.beta = deg;
     document.getElementById("betaRange").value = deg;
+    document.getElementById("beta").value = round(fromDegToPrefAngle(deg), 3);
     compute();
   });
   document.getElementById("betaRange").addEventListener("input", e => {
@@ -940,6 +953,43 @@ v_l,home = R·ω_home·sin(α_l)</div>
     return clamp(10 + Math.cbrt(Math.max(massSI, 1e-6)) * 16, 12, 46);
   }
 
+  // ---------- animation: hard stop -> full extension -> hard stop, looping ----------
+  let animProgress = 0; // 0 = ready/hard stop, 1 = full extension
+  let animPlaying = false;
+  let animRafId = null;
+  let animStartTime = null;
+  const ANIM_ONE_WAY_MS = 1600;
+
+  function animFrame(now) {
+    if (!animPlaying) return;
+    if (animStartTime === null) animStartTime = now - animProgress * ANIM_ONE_WAY_MS;
+    const elapsed = (now - animStartTime) % (ANIM_ONE_WAY_MS * 2);
+    const t = elapsed < ANIM_ONE_WAY_MS ? elapsed / ANIM_ONE_WAY_MS : (2 * ANIM_ONE_WAY_MS - elapsed) / ANIM_ONE_WAY_MS;
+    // smoothstep ease in/out — reads better than a linear sweep, especially near the two stops
+    animProgress = t * t * (3 - 2 * t);
+    if (lastCompute) drawDiagram(lastCompute);
+    animRafId = requestAnimationFrame(animFrame);
+  }
+
+  document.getElementById("playPauseBtn").addEventListener("click", () => {
+    animPlaying = !animPlaying;
+    document.getElementById("playPauseBtn").textContent = animPlaying ? "⏸ Pause" : "▶ Play";
+    if (animPlaying) {
+      animStartTime = null;
+      animRafId = requestAnimationFrame(animFrame);
+    } else if (animRafId) {
+      cancelAnimationFrame(animRafId);
+    }
+  });
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    animPlaying = false;
+    animProgress = 0;
+    animStartTime = null;
+    document.getElementById("playPauseBtn").textContent = "▶ Play";
+    if (animRafId) cancelAnimationFrame(animRafId);
+    if (lastCompute) drawDiagram(lastCompute);
+  });
+
   function drawDiagram(r) {
     if (!r) return;
     const rect = canvas.getBoundingClientRect();
@@ -962,11 +1012,13 @@ v_l,home = R·ω_home·sin(α_l)</div>
     const line = cssVar("--line-strong");
 
     const span = Math.max(L1 + L2, r.R || 0, 0.05);
-    const scale = isFinite(span) && span > 0 ? (W * 0.30) / span : 1;
+    const scale = isFinite(span) && span > 0 ? (W * 0.26) / span : 1;
 
-    const railY = H * 0.66;
-    const F = { x: W * 0.54, y: H * 0.16 };
-    const theta0 = 80 * DEG_TO_RAD; // ready pose: F->E points down-and-slightly-right
+    const F = { x: W * 0.54, y: H * 0.15 };
+    // theta0 is the schematic's own drawing reference, independent of beta's
+    // 0° (which is a bend-orientation convention, not a rotation position) —
+    // ready pose: F->E points down-and-slightly-right.
+    const theta0 = 80 * DEG_TO_RAD;
 
     function armPts(theta) {
       const E = { x: F.x + L1 * scale * Math.cos(theta), y: F.y + L1 * scale * Math.sin(theta) };
@@ -976,28 +1028,53 @@ v_l,home = R·ω_home·sin(α_l)</div>
       return { E, P };
     }
 
-    const ready = armPts(theta0);
-    const full = armPts(theta0 - r.dTheta);
+    const thetaReady = theta0;
+    const thetaFull = theta0 - r.dTheta;
+    const ready = armPts(thetaReady);
+    const full = armPts(thetaFull);
+    // live/animated pose: interpolates between ready (progress 0) and full
+    // extension (progress 1), driven by the play/pause/reset controls.
+    const thetaLive = thetaReady + (thetaFull - thetaReady) * animProgress;
+    const live = armPts(thetaLive);
 
-    // the common rail (spring/load on the left, effort slider on the right)
+    // ---------- two SEPARATE, parallel rails — never a shared track ----------
     const railLeftX = W * 0.08;
-    const railRightX = Math.max(full.E.x, ready.E.x) + 40;
-    ctx.strokeStyle = line; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(railLeftX, railY); ctx.lineTo(railRightX, railY); ctx.stroke();
+    const railRightX = W * 0.92;
+    const railYLoad = H * 0.78;
+    const railYEffort = H * 0.52;
 
-    // wall + spring at the far LEFT
+    function drawRail(y, label, labelColor) {
+      ctx.strokeStyle = line; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(railLeftX, y); ctx.lineTo(railRightX, y); ctx.stroke();
+      ctx.fillStyle = labelColor; ctx.font = "10px " + cssVar("--font-mono");
+      ctx.fillText(label, railRightX - 78, y + 16);
+    }
+    drawRail(railYEffort, "effort rail", accent);
+    drawRail(railYLoad, "load rail", ok);
+
+    // wall + spring at the far LEFT of the LOAD rail only
     const wallX = railLeftX;
     ctx.strokeStyle = ink; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(wallX, railY - 20); ctx.lineTo(wallX, railY + 20); ctx.stroke();
-    const springEndX = wallX + Math.max(50, (Math.min(full.P.x, ready.P.x) - wallX) * 0.5);
+    ctx.beginPath(); ctx.moveTo(wallX, railYLoad - 20); ctx.lineTo(wallX, railYLoad + 20); ctx.stroke();
+    const springEndX = wallX + 70;
     ctx.strokeStyle = inkSoft; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(wallX, railY);
+    ctx.beginPath(); ctx.moveTo(wallX, railYLoad);
     const coils = 6, seg = (springEndX - wallX) / coils;
-    for (let i = 0; i < coils; i++) ctx.lineTo(wallX + seg * (i + 0.5), railY + (i % 2 === 0 ? -8 : 8));
-    ctx.lineTo(springEndX, railY);
+    for (let i = 0; i < coils; i++) ctx.lineTo(wallX + seg * (i + 0.5), railYLoad + (i % 2 === 0 ? -8 : 8));
+    ctx.lineTo(springEndX, railYLoad);
     ctx.stroke();
     ctx.fillStyle = inkFaint; ctx.font = "10px " + cssVar("--font-mono");
-    ctx.fillText("spring", wallX + 6, railY - 26);
+    ctx.fillText("spring", wallX + 6, railYLoad - 26);
+
+    // 0° reference mark at F, pointing straight up — the requested visual
+    // anchor for beta's sign convention. This marks an absolute "up"
+    // direction on the canvas; it is not the same angle as theta0 (which is
+    // just this schematic's own drawing convention for the ready pose).
+    ctx.strokeStyle = inkFaint; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(F.x, F.y); ctx.lineTo(F.x, 8); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = inkFaint; ctx.font = "9.5px " + cssVar("--font-mono");
+    ctx.fillText("0°", F.x + 4, 16);
 
     // ground/pivot hatch symbol at F
     ctx.strokeStyle = line; ctx.fillStyle = inkFaint; ctx.lineWidth = 1.4;
@@ -1017,12 +1094,13 @@ v_l,home = R·ω_home·sin(α_l)</div>
       ctx.setLineDash([]);
     }
     drawArm(ready, { color: inkFaint, width: 1.6, dash: [5, 4] });
-    drawArm(full, { color: ink, width: 2.6 });
+    drawArm(full, { color: ink, width: 1.6, dash: [2, 3] });
+    drawArm(live, { color: accent, width: 2.8 }); // the moving/animated pose
 
-    // rotation sweep arc at F
+    // rotation sweep arc at F (full available range, static reference)
     ctx.strokeStyle = inkFaint; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
     ctx.beginPath();
-    ctx.arc(F.x, F.y, L1 * scale * 0.5, theta0, theta0 - r.dTheta, true);
+    ctx.arc(F.x, F.y, L1 * scale * 0.5, thetaReady, thetaFull, true);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -1032,59 +1110,58 @@ v_l,home = R·ω_home·sin(α_l)</div>
     ctx.fillStyle = inkSoft; ctx.font = "11px " + cssVar("--font-mono");
     ctx.fillText("F", F.x - 4, F.y - 30);
 
-    // pin markers at E and P (full-extension pose, most representative)
+    // pin markers at E and P, on the LIVE (animated) pose
     ctx.fillStyle = accent;
-    ctx.beginPath(); ctx.arc(full.E.x, full.E.y, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillText("E", full.E.x + 6, full.E.y - 6);
+    ctx.beginPath(); ctx.arc(live.E.x, live.E.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText("E", live.E.x + 6, live.E.y - 6);
     ctx.fillStyle = ok;
-    ctx.beginPath(); ctx.arc(full.P.x, full.P.y, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillText("P", full.P.x - 4, full.P.y - 10);
+    ctx.beginPath(); ctx.arc(live.P.x, live.P.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText("P", live.P.x - 4, live.P.y - 10);
 
-    // slotted (Scotch-yoke) drop-links from each pin straight down/up to the common rail
-    function dropLink(pin, color) {
+    // slotted (Scotch-yoke) drop-links from each pin to its OWN rail — the
+    // two masses never share a track, so they can never be drawn as if
+    // blocking each other.
+    function dropLink(pin, railY, color) {
       ctx.strokeStyle = color; ctx.setLineDash([1, 3]); ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(pin.x, pin.y); ctx.lineTo(pin.x, railY); ctx.stroke();
       ctx.setLineDash([]);
     }
-    dropLink(full.E, accent);
-    dropLink(full.P, ok);
+    dropLink(live.E, railYEffort, accent);
+    dropLink(live.P, railYLoad, ok);
 
-    // effort mass block (right side, on the rail) — sized to the actual mass
+    // effort mass block, on its own rail — sized to the actual mass, follows the live pose
     const meSide = massBoxSide(state.me);
     ctx.fillStyle = accent;
-    ctx.fillRect(full.E.x - meSide / 2, railY - meSide / 2, meSide, meSide);
+    ctx.fillRect(live.E.x - meSide / 2, railYEffort - meSide / 2, meSide, meSide);
     ctx.fillStyle = cssVar("--accent-ink");
     ctx.font = "9.5px " + cssVar("--font-mono"); ctx.textAlign = "center";
-    ctx.fillText("mₑ", full.E.x, railY + 3);
+    ctx.fillText("mₑ", live.E.x, railYEffort + 3);
     ctx.textAlign = "left";
 
-    // load mass block (left side, on the rail)
+    // load mass block, on its own separate rail — follows the live pose
     const mlSide = massBoxSide(state.ml);
     ctx.fillStyle = ok;
-    ctx.fillRect(full.P.x - mlSide / 2, railY - mlSide / 2, mlSide, mlSide);
+    ctx.fillRect(live.P.x - mlSide / 2, railYLoad - mlSide / 2, mlSide, mlSide);
     ctx.fillStyle = cssVar("--surface");
     ctx.font = "9.5px " + cssVar("--font-mono"); ctx.textAlign = "center";
-    ctx.fillText("mₗ", full.P.x, railY + 3);
+    ctx.fillText("mₗ", live.P.x, railYLoad + 3);
     ctx.textAlign = "left";
 
-    // effort force arrow — horizontal, in line with the rail, pointing left (into the mechanism, from the right)
-    const arrowY = railY - meSide / 2 - 14;
-    const arrowStartX = full.E.x + 46;
-    drawArrow(arrowStartX, arrowY, full.E.x + meSide / 2 + 4, arrowY, accent, 2.2);
+    // effort force arrow — horizontal, in line with the effort rail, pointing left (into the mechanism, from the right)
+    const arrowY = railYEffort - meSide / 2 - 14;
+    const arrowStartX = live.E.x + 46;
+    drawArrow(arrowStartX, arrowY, live.E.x + meSide / 2 + 4, arrowY, accent, 2.2);
     ctx.fillStyle = accent; ctx.font = "10.5px " + cssVar("--font-mono");
     ctx.fillText("Fe →", arrowStartX + 2, arrowY - 6);
 
-    // arm length + beta labels
+    // arm length + beta labels (on the live pose)
     ctx.fillStyle = inkSoft; ctx.font = "10.5px " + cssVar("--font-mono");
-    const midFE = { x: (F.x + full.E.x) / 2, y: (F.y + full.E.y) / 2 };
+    const midFE = { x: (F.x + live.E.x) / 2, y: (F.y + live.E.y) / 2 };
     ctx.fillText("L₁", midFE.x + 8, midFE.y - 4);
-    const midEP = { x: (full.E.x + full.P.x) / 2, y: (full.E.y + full.P.y) / 2 };
+    const midEP = { x: (live.E.x + live.P.x) / 2, y: (live.E.y + live.P.y) / 2 };
     ctx.fillText("L₂", midEP.x - 16, midEP.y - 4);
     ctx.fillStyle = accent; ctx.font = "10px " + cssVar("--font-mono");
-    ctx.fillText("β", full.E.x + 12, full.E.y + 14);
-
-    ctx.fillStyle = inkFaint; ctx.font = "10px " + cssVar("--font-mono");
-    ctx.fillText("linear rail", (railLeftX + railRightX) / 2 - 24, railY + 24);
+    ctx.fillText("β=" + fmt(r.betaDeg, 0) + "°", live.E.x + 12, live.E.y + 16);
   }
 
   function drawArrow(x1, y1, x2, y2, color, width) {
